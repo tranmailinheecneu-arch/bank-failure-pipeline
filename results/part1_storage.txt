@@ -1,0 +1,6 @@
+                   scheme  size_MB  read_all_s  read_4cols_s  read_year2009_s
+           A CSV (pandas)  438.253       0.894         0.784            0.891
+         B Parquet snappy  218.681       0.233         0.034            0.108
+           C Parquet zstd  158.672       0.227         0.038            0.089
+  D Parquet zstd + schema  133.826       0.197         0.024            0.066
+E zstd + schema + by year  134.936       0.185         0.036            0.018
