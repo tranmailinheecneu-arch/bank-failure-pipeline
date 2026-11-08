@@ -19,8 +19,10 @@ pip install -r requirements.txt
 
 1. Download the data (about one hour; resumable): `python fdic_download_starter.py`
 2. Run the CSV vs. Parquet storage benchmark: `python part1_storage_benchmark.py`
-
-Output: `results/part1_storage.txt`
+   (output: `results/part1_storage.txt`)
+3. Build the final storage layout (Parquet + zstd, partitioned by year): `python build_storage.py`
+4. Fair benchmark and float32 check: `python part1_extra_checks.py`
+   (outputs in `results/`: schema table, completeness evidence, benchmark tables)
 
 ## Data download record
 

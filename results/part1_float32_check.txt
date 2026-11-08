@@ -1,0 +1,8 @@
+ column  max_abs_value  max_abs_error  max_rel_error  null_mismatch
+    ROA     860.608204       0.000023   5.955112e-08              0
+    ROE  354657.800000       0.013750   5.717523e-08              0
+   NIMY    4515.151515       0.000148   5.959196e-08              0
+RBC1AAJ  466500.000000       0.000601   5.959986e-08              0
+RBCRWAJ  274636.363636       0.011364   5.953703e-08              0
+
+money columns kept at full precision: ASSET=Int64, DEP=Float64

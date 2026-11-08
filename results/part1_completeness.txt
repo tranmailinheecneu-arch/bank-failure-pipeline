@@ -1,0 +1,5 @@
+quarters: 170
+total rows: 1,682,616
+rows per quarter: min 4,313 / max 18,133
+quarters not complete: none
+rows == API total in every quarter: True
