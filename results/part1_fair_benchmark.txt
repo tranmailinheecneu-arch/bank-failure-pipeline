@@ -1,5 +1,5 @@
  format engine  read_all_s  read_4cols_s
-    CSV pandas       0.897         0.738
-    CSV polars      13.012        14.642
-Parquet pandas       0.384         0.041
-Parquet polars       0.215         0.024
+    CSV pandas       1.199         1.067
+    CSV polars      17.509        19.929
+Parquet pandas       0.639         0.044
+Parquet polars       0.304         0.031

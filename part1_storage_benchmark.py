@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import polars as pl
 
-RAW = Path("data_raw/fdic/financials")
+RAW = Path("data_raw/fdic_v2/financials")
 OUT = Path("data_storage")
 OUT.mkdir(exist_ok=True)
 

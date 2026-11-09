@@ -9,7 +9,7 @@ S = Path("data_storage")
 RES = Path("results")
 RES.mkdir(exist_ok=True)
 COLS = ["CERT", "REPDTE", "ASSET", "ROA"]
-RATIO_COLS = ["ROA", "ROE", "NIMY", "RBC1AAJ", "RBCRWAJ"]
+RATIO_COLS = ["ROA", "ROE", "NIMY", "RBC1AAJ", "RBCRWAJ","ROAQ"]
 
 
 def best_time(fn, repeat=3):

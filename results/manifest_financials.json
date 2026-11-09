@@ -1,24 +1,4 @@
 {
- "20230331": {
-  "rows": 4740,
-  "api_total": 4740,
-  "complete": true
- },
- "20230630": {
-  "rows": 4714,
-  "api_total": 4714,
-  "complete": true
- },
- "20230930": {
-  "rows": 4686,
-  "api_total": 4686,
-  "complete": true
- },
- "20231231": {
-  "rows": 4658,
-  "api_total": 4658,
-  "complete": true
- },
  "19840331": {
   "rows": 17930,
   "api_total": 17930,
@@ -797,6 +777,26 @@
  "20221231": {
   "rows": 4773,
   "api_total": 4773,
+  "complete": true
+ },
+ "20230331": {
+  "rows": 4740,
+  "api_total": 4740,
+  "complete": true
+ },
+ "20230630": {
+  "rows": 4714,
+  "api_total": 4714,
+  "complete": true
+ },
+ "20230930": {
+  "rows": 4686,
+  "api_total": 4686,
+  "complete": true
+ },
+ "20231231": {
+  "rows": 4658,
+  "api_total": 4658,
   "complete": true
  },
  "20240331": {

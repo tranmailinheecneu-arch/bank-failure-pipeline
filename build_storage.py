@@ -5,12 +5,12 @@ from pathlib import Path
 
 import polars as pl
 
-RAW = Path("data_raw/fdic/financials")
+RAW = Path("data_raw/fdic_v2/financials")
 OUT = Path("data_storage/panel")  # final dataset used by the later parts
 RES = Path("results")
 RES.mkdir(exist_ok=True)
 
-RATIO_COLS = ["ROA", "ROE", "NIMY", "RBC1AAJ", "RBCRWAJ"]  # ratios in %, safe for float32
+RATIO_COLS = ["ROA", "ROE", "NIMY", "RBC1AAJ", "RBCRWAJ","ROAQ"]  # ratios in %, safe for float32
 
 files = sorted(RAW.glob("*.parquet"))
 print("raw files:", len(files))
@@ -67,7 +67,7 @@ print(
 )
 
 # 6. Record evidence of complete download from the download manifest
-manifest_path = Path("data_raw/fdic/manifest_financials.json")
+manifest_path = Path("data_raw/fdic_v2/manifest_financials.json")
 manifest = json.loads(manifest_path.read_text())
 shutil.copy(manifest_path, RES / "manifest_financials.json")
 quarter_rows = [entry["rows"] for entry in manifest.values()]
