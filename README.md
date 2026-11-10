@@ -59,3 +59,10 @@ Run in this order (steps 3 and 4 need the files created by step 2):
 - Trade-off: E is slightly slower than D for a 4-column scan (0.036 s vs 0.024 s), and adds 1.5 MB. Accepted because filtering by period is the dominant access pattern in a time-ordered panel.
 - Float32 for ratio columns (ROA, ROE, NIMY, RBC1AAJ, RBCRWAJ, ROAQ): max relative error 6e-8, no null mismatches (results/part1_float32_check.txt). Money columns (ASSET, DEP) stay at full precision.
 - Completeness: 170 quarters, 1,682,616 rows, every quarter equals the API total; per-year row counts in the stored panel sum to the same total (results/part1_completeness.txt).
+### Part 2.1 data-quality findings (results/part2_dq_report.txt)
+- Panel: 1,682,616 rows, 24,064 banks, 49 variables; no duplicate (CERT, REPDTE); no ASSET <= 0.
+- Banks per year fall from 18,330 (1984) to 4,539 (2025).
+- Structural missingness: ~18% of rows miss charge-off and nonaccrual fields in 1984-1989; P3ASSET exists only from 2001.
+- RBCRWAJ holds 468,358 zeros (27.8% of rows) that are placeholders before risk-based capital reporting, not real values.
+- Extreme ratios (ROA to 861%, ROE to 354,658%) come from tiny denominators; legitimate negatives (negative equity, net loss) are kept.
+- 32 banks have gaps inside their history (92 missing bank-quarters); 204 banks have a single quarter.
