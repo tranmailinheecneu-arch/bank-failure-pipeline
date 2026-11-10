@@ -46,3 +46,16 @@ Run in this order (steps 3 and 4 need the files created by step 2):
 - `download_fdic.py`: copy of the starter script, modified by me only in the field list `FIN_FIELDS` and the default output folder.
 - FDIC BankFind API and field dictionary: https://api.fdic.gov/banks/docs/
 - AI assistance: Claude (Anthropic) was used for guidance on setup, code and report structure.
+### Part 1 results
+| Scheme | Size (MB) | Read all (s) | Read 4 cols (s) | Read one year (s) |
+|---|---|---|---|---|
+| A CSV (pandas) | 615.6 | 1.390 | 1.060 | 1.262 |
+| B Parquet snappy | 318.1 | 0.334 | 0.035 | 0.122 |
+| C Parquet zstd | 225.2 | 0.324 | 0.030 | 0.096 |
+| D zstd + schema | 200.3 | 0.318 | 0.024 | 0.082 |
+| E zstd + schema + partition by year (final) | 201.8 | 0.275 | 0.036 | 0.029 |
+
+- Final layout E is 3.1x smaller than CSV; a one-year query is 43x faster (0.029 s vs 1.262 s) because partition pruning reads only one folder.
+- Trade-off: E is slightly slower than D for a 4-column scan (0.036 s vs 0.024 s), and adds 1.5 MB. Accepted because filtering by period is the dominant access pattern in a time-ordered panel.
+- Float32 for ratio columns (ROA, ROE, NIMY, RBC1AAJ, RBCRWAJ, ROAQ): max relative error 6e-8, no null mismatches (results/part1_float32_check.txt). Money columns (ASSET, DEP) stay at full precision.
+- Completeness: 170 quarters, 1,682,616 rows, every quarter equals the API total; per-year row counts in the stored panel sum to the same total (results/part1_completeness.txt).
