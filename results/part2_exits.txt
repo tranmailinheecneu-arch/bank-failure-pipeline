@@ -1,0 +1,160 @@
+banks in panel: 24,064 | last quarter index 8105 (= 2026Q2) | built in 0.2 s (lazy scan, 3 of 51 columns)
+
+== Failures table audit ==
+rows: 4,117 | unparsable FAILDATE: 0 | CERT repeated (second event dropped): 44
+rows without a usable CERT (cannot be linked to the panel): 488 (dated 1984 or later: 0)
+FAILDATE range: 1970-02-22 to 2026-07-17
+
+RESTYPE values (resolution type; check which ones are real closures):
+   RESTYPE    n
+   FAILURE 3036
+ASSISTANCE  549
+
+CERTs with several failure/assistance events: event sequence by date
+                pattern  banks
+   ASSISTANCE > FAILURE     37
+ASSISTANCE > ASSISTANCE      4
+      FAILURE > FAILURE      3
+
+failures whose CERT never appears in the panel: 344 (of which dated 1984 or later: 22; the rest failed before the panel starts)
+
+institutions rows: 27,835 | not in panel: 4,006
+
+== Exit class per bank (CERT) ==
+                      exit_class  banks   pct
+                      other_exit  16910 70.27
+                        survivor   4306 17.89
+                         failure   2662 11.06
+     reported_after_failure_date    177  0.74
+     survivor_listed_in_failures      7  0.03
+failure_date_before_first_report      2  0.01
+
+banks with an ASSISTANCE-only event in the failures table (never labelled as failures): 400
+
+== Exit class x RESTYPE (banks listed in the failures table) ==
+                      exit_class    RESTYPE  banks
+                         failure    FAILURE   2662
+failure_date_before_first_report    FAILURE      2
+                      other_exit ASSISTANCE    393
+     reported_after_failure_date    FAILURE    177
+     survivor_listed_in_failures ASSISTANCE      7
+
+== Failures: quarters between last report and failure quarter (0 = failed in the quarter of its last report) ==
+ gap_q  banks
+    -1     50
+     0     41
+     1   2236
+     2    325
+     3     10
+failures whose last report is more than 4 quarters before FAILDATE (can never receive y = 1): 0
+
+== Point-in-time exposure: days from the last Call Report date to FAILDATE ==
+                          lag_bucket  failed_banks
+    a) report dated on/after failure            91
+b) 1-35 days (report not yet public)           750
+                       c) 36-90 days          1474
+                d) more than 90 days           347
+failed banks whose final report was probably not public before failure: 841 of 2662
+
+== Other exits by FDIC change code of the last structural event (code, description, bucket) ==
+ CHANGEC1                                                              code_desc            exit_bucket  banks
+    223.0                                             Merger -Without Assistance                 merger  14181
+    221.0                                        Absorbtion - Without Assistance                 merger    807
+    240.0                                                    Closing - Voluntary closure_or_liquidation    504
+    217.0                    Passthrough Receivorship/Conservatorship Resolution           failure_like    488
+    213.0                                                      Merger - Assisted           failure_like    242
+      NaN                                                                    NaN               unmapped    194
+    224.0 Affiliated Institution Merger (Pooling) (i.e. Corporate Reorganization                 merger    184
+    222.0                                      Consolidated - Without Assistance                 merger    173
+    235.0                     Rtc Supervised Payoffs, Liquidations, and Closings           failure_like     84
+    216.0                                                 Bridge Bank Resolution           failure_like     23
+    211.0                                            Failure - Whole Institution           failure_like     17
+    230.0                                               Closing - Failure Payoff           failure_like     11
+    225.0                     Partial Purchase & Assumption - Without Assistance                  other      1
+    470.0                                    Change in Primary Regulatory Agency                  other      1
+
+== Other exits by bucket ==
+           exit_bucket  banks
+                merger  15345
+          failure_like    865
+closure_or_liquidation    504
+              unmapped    194
+                 other      2
+
+other exits whose change code reads like a failure/assistance but that are NOT in the failures table: 865
+
+== Anomalies (first 15 rows of each class, for manual inspection) ==
+ CERT                       exit_class first_repdte last_repdte FAILDATE_d RESTYPE  ACTIVE
+28244 failure_date_before_first_report     19840331    19991231 1982-02-20 FAILURE       0
+28678 failure_date_before_first_report     19840331    19961231 1981-09-08 FAILURE       0
+27627      reported_after_failure_date     19840331    19891231 1989-03-09 FAILURE       0
+27717      reported_after_failure_date     19840331    19900930 1989-03-16 FAILURE       0
+27864      reported_after_failure_date     19840331    19900331 1989-03-02 FAILURE       0
+27978      reported_after_failure_date     19840331    19900331 1989-07-20 FAILURE       0
+28354      reported_after_failure_date     19840331    19891231 1989-03-09 FAILURE       0
+28819      reported_after_failure_date     19840331    19900331 1989-03-09 FAILURE       0
+29458      reported_after_failure_date     19840331    19900331 1989-04-06 FAILURE       0
+30311      reported_after_failure_date     19840331    19920630 1990-02-16 FAILURE       0
+30353      reported_after_failure_date     19840331    19910630 1990-06-22 FAILURE       0
+31503      reported_after_failure_date     19840331    19900331 1989-02-07 FAILURE       0
+31806      reported_after_failure_date     19840331    19900930 1989-03-09 FAILURE       0
+31874      reported_after_failure_date     19840331    19900630 1989-03-02 FAILURE       0
+32471      reported_after_failure_date     19860630    19900331 1989-02-17 FAILURE       0
+
+== Consistency: institutions.ACTIVE vs still reporting in the last quarter ==
+ ACTIVE  still_reporting  banks
+    NaN            False    179
+    NaN             True     56
+    0.0            False  19570
+    0.0             True     52
+    1.0            False      2
+    1.0             True   4205
+
+== Exits per year (year of last Call Report) ==
+exit_class  failure  other_exit
+year                           
+1984           90.0       406.0
+1985          145.0       402.0
+1986          183.0       505.0
+1987          209.0       699.0
+1988          246.0       779.0
+1989          416.0       470.0
+1990          340.0       613.0
+1991          239.0       778.0
+1992          138.0       600.0
+1993           36.0       672.0
+1994           16.0       840.0
+1995            6.0       637.0
+1996            5.0       675.0
+1997            2.0       760.0
+1998            4.0       664.0
+1999            8.0       509.0
+2000            6.0       544.0
+2001            9.0       437.0
+2002            6.0       310.0
+2003            5.0       320.0
+2004            1.0       327.0
+2005            0.0       340.0
+2006            1.0       337.0
+2007            4.0       339.0
+2008           44.0       282.0
+2009          160.0       179.0
+2010          142.0       231.0
+2011           82.0       191.0
+2012           39.0       254.0
+2013           25.0       268.0
+2014           17.0       299.0
+2015            5.0       299.0
+2016            7.0       263.0
+2017            5.0       252.0
+2018            0.0       252.0
+2019            5.0       256.0
+2020            3.0       145.0
+2021            0.0       194.0
+2022            2.0       135.0
+2023            4.0       107.0
+2024            2.0       111.0
+2025            2.0       187.0
+2026            3.0        42.0
+
+peak failure year: 1989 (416) | peak other-exit year: 1994 (840)

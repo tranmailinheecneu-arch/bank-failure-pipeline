@@ -1,7 +1,11 @@
 # Bank Failure Early-Warning Pipeline (BFT65B)
 
 Individual final report, National Economics University, BFT65B Big Data Analytics in Finance.
-Author: Tran Mai Linh (MSV: 11230990). Data source: [US FDIC BankFind API](https://api.fdic.gov/banks). Data files are not committed.
+Author: Tran Mai Linh (MSV: 11230990). 
+Data source: 
+- [US FDIC BankFind API][def]. Data files are not committed.
+- Course materials: Lecture 3 "Financial Time Series" (07_L03_TimeSeries_ML) for the point-in-time rule and the available-timestamp idea; Lessons 12-14 (visualization) for the figure design.
+- FDIC BankFind API definitions (failures, institutions, history endpoints): https://api.fdic.gov/banks/docs/
 
 ## Setup
 Python 3.13 (Windows tested). Disk space needed: about 1 GB.
@@ -16,6 +20,7 @@ pip install -r requirements.txt
 - `fdic_download_starter.py`: original download script provided by the instructor (unchanged, kept for reference)
 - `download_fdic.py`: my modified copy of the starter script (extended field list, see below)
 - `part1_storage_benchmark.py`, `build_storage.py`, `part1_extra_checks.py`: Part 1
+- `part2_dq_report.py`, `part2_exits.py`: Part 2
 - `results/`: small result files (tables, completeness evidence)
 - `data_raw/`, `data_storage/`: generated locally, not committed
 
@@ -105,3 +110,29 @@ Impossible or suspicious values:
 Open items for the next Part 2 steps:
 - Failures table has 4,117 rows and institutions has 27,835 rows, 3,771 more than the 24,064 banks in the panel; to be reconciled in the exit classification (Part 2.2).
 - Handling of each problem above (nulls, flags, exclusions) and the clean labelled panel will be added when the corresponding scripts are done.
+
+[def]: https://api.fdic.gov/banks
+### Part 2.2 exit classification (`results/part2_exits.txt`)
+
+Every one of the 24,064 banks in the panel is assigned one exit class (last quarter of the panel: 2026Q2). Only the failures table decides what is a failure; a merger is never a failure.
+
+| Exit class | Banks | Share |
+|---|---|---|
+| other_exit | 16,910 | 70.27% |
+| survivor | 4,306 | 17.89% |
+| failure | 2,662 | 11.06% |
+| reported_after_failure_date | 177 | 0.74% |
+| survivor_listed_in_failures | 7 | 0.03% |
+| failure_date_before_first_report | 2 | 0.01% |
+
+- Failures table: 4,117 rows; 488 have no usable CERT (0 dated 1984 or later) and 344 linked banks never appear in the panel (22 of them dated 1984 or later; the rest failed before the panel starts).
+- 400 banks have only an open-bank ASSISTANCE event (RESTYPE = ASSISTANCE): they kept operating, so they are not labelled as failures; only RESTYPE = FAILURE counts.
+- Banks with a FAILURE event in the panel: 2,841 (2,662 clean failures, 177 that kept reporting after FAILDATE, 2 with FAILDATE before their first report).
+- Failures by year of last report peak in 1989 (416 banks); other exits peak in 1994 (840 banks); 2026 covers the first half-year only (`results/fig_part2_exits_by_year.png`).
+- No classified failure has its last report more than four quarters before FAILDATE, so every one of them can receive a positive four-quarter-ahead label.
+- 841 of 2,662 classified failures may have a final report that was not public before failure under the 35-day publication-lag assumption (an assumption, not measured).
+- 865 other exits carry a receivership, bridge-bank, payoff or assisted-merger FDIC change code but are not linked to a FAILURE row (candidates for failures missing from the failures table; to be handled in Part 2.3).
+- 186 banks fall in anomaly classes: 177 still reported after their FAILURE date, 2 have a FAILURE date before their first report, and 7 are listed only with an ASSISTANCE event but still report.
+- Built with a lazy Polars scan that reads 3 of 51 columns in 0.2 s (`results/part2_exits_plan.txt`).
+
+The remaining Part 2 steps (clean point-in-time panel with the four-quarter-ahead label) are added when their scripts are done.

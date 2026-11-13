@@ -67,3 +67,4 @@ text = "\n".join(out)
 (RES / "part2_dq_report.txt").write_text(text, encoding="utf-8")
 print(text[:3000])
 print("\n... full report saved to results/part2_dq_report.txt")
+
