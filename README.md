@@ -1,15 +1,14 @@
 # Bank Failure Early-Warning Pipeline (BFT65B)
 
 Individual final report, National Economics University, BFT65B Big Data Analytics in Finance.
-Author: Tran Mai Linh (MSV: 11230990). 
-Data source: 
-- [US FDIC BankFind API][def]. Data files are not committed.
+Author: Tran Mai Linh (MSV: 11230990).
+
+Data source: [US FDIC BankFind API](https://api.fdic.gov/banks). Data files are not committed. Other sources are listed at the end (Sources).
 - Course materials: Lecture 3 "Financial Time Series" (07_L03_TimeSeries_ML) for the point-in-time rule and the available-timestamp idea; Lessons 12-14 (visualization) for the figure design.
-- FDIC BankFind API definitions (failures, institutions, history endpoints): https://api.fdic.gov/banks/docs/
+- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.
 
 ## Setup
-Python 3.13 (Windows tested). Disk space needed: about 1 GB.
-
+Python 3.13 (Windows tested). Disk space needed: about 2.3 GB (`data_raw` 575 MB + `data_storage` 1,681 MB, mostly the CSV benchmark copies).
 ```
 python -m venv .venv
 .venv\Scripts\activate          # Mac/Linux: source .venv/bin/activate
@@ -66,14 +65,15 @@ Storage schemes compared (`results/part1_storage.txt`):
 - Stored schema (`results/part1_schema_table.txt`): of 51 columns, 39 are Float64, 6 ratio columns are Float32 (NIMY, ROAQ, ROA, ROE, RBC1AAJ, RBCRWAJ), 4 are Int64 (CERT, ASSET, FREPP, P3ASSET), STNAME is Categorical and REPDTE is String.
 - Float32 check (`results/part1_float32_check.txt`): maximum relative error 6e-8 on the six ratio columns (largest absolute error 0.0138, on ROE, whose maximum is 354,657.8), no null mismatches. Money columns (ASSET, DEP) stay at full precision.
 - Engine comparison (`results/part1_fair_benchmark.txt`, seconds, read all / read 4 columns): CSV pandas 1.199 / 1.067, CSV Polars 17.509 / 19.929, Parquet pandas 0.639 / 0.044, Parquet Polars 0.304 / 0.031. On Parquet, Polars is 2.1x faster than pandas for a full read and 1.4x for a 4-column read. For pandas, Parquet is 1.9x faster than CSV for a full read and 24x faster for a 4-column read.
-- Timings come from single runs on one laptop and vary between runs (pandas CSV full read: 1.390 s in the storage benchmark, 1.199 s here). Polars was the slowest on CSV (17.5 s), which was not investigated, so conclusions rely on the Parquet rows.
+- Each timing is the best of 3 repeats within one script run on one laptop and varies between runs (pandas CSV full read: 1.390 s in the storage benchmark, 1.199 s here). Polars was the slowest on CSV (17.5 s); a likely cause is the full-file schema inference (`infer_schema_length=None`) used in the benchmark, which was not tested separately, so conclusions rely on the Parquet rows.
 - Completeness: the per-year row counts of the stored panel sum to 1,682,616, equal to the sum of the API totals (e.g. 2026: 8,666 rows = 4,353 + 4,313).
 
 ## Part 2: Data quality and clean panel
 
-Run after Part 1 (reads `data_storage/panel/`):
+Run after Part 1 (reads `data_storage/panel/` and the failures and institutions tables in `data_raw/fdic_v2/`):
 
 1. Automated data-quality report: `python part2_dq_report.py` (output: `results/part2_dq_report.txt`: banks per year, missing values by column and by year, outliers and impossible values, gaps in each bank's history)
+2. Exit classification (failure vs other exits): `python part2_exits.py` (outputs: `results/part2_exits.txt`, `results/fig_part2_exits_by_year.png`, `results/part2_exits_plan.txt`, `data_storage/exits/bank_exits.parquet`). The first run needs internet to fetch FDIC change-code descriptions; they are cached in `results/part2_changecodes.json` (committed), so reruns work offline.
 
 ### Part 2.1 data-quality findings (`results/part2_dq_report.txt`)
 
@@ -108,10 +108,8 @@ Impossible or suspicious values:
 | Legitimate zeros (not missing) | BRO 1,321,289 zero rows (78.5%), INTAN 71.3%, FREPP 68.9%, ORE 39.8% |
 
 Open items for the next Part 2 steps:
-- Failures table has 4,117 rows and institutions has 27,835 rows, 3,771 more than the 24,064 banks in the panel; to be reconciled in the exit classification (Part 2.2).
-- Handling of each problem above (nulls, flags, exclusions) and the clean labelled panel will be added when the corresponding scripts are done.
+- Failures table has 4,117 rows and institutions has 27,835 rows. Reconciliation (Part 2.2): 4,006 institutions never appear in the panel and 235 panel banks have no ACTIVE value in institutions (27,835 − 4,006 + 235 = 24,064).
 
-[def]: https://api.fdic.gov/banks
 ### Part 2.2 exit classification (`results/part2_exits.txt`)
 
 Every one of the 24,064 banks in the panel is assigned one exit class (last quarter of the panel: 2026Q2). Only the failures table decides what is a failure; a merger is never a failure.
