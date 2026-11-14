@@ -100,7 +100,7 @@ Impossible or suspicious values:
 
 | Problem | Evidence |
 |---|---|
-| Zero used as missing for risk-based capital | RBCRWAJ is exactly 0 in every row of 1984-1989, in about 0.2-0.3% of rows in 1990-2019 and in about 35-41% of rows from 2020. RBC1AAJ is 0 in about 17-18% of rows in 1984-1989 and in about 0.2-0.4% afterwards (68 rows per year since 2015). Both columns have a null share of 0.00%, so these zeros hide missing values (`results/part2_zero_pattern.txt` for exact counts); handling in Part 2.3 |
+| Zero used as missing for risk-based capital | RBCRWAJ is exactly 0 in every row of 1984-1989 (419,414 rows of the stored panel), falls to 0.2-0.4% of rows in 1990-2019 (67-225 rows per year) and is 0 again in about 35-42% of rows from 2020 (45,865 rows, 2,621 banks). RBC1AAJ is 0 in about 18% of rows in 1984-1989 (76,038 rows) and in 0.2-0.4% afterwards; since 2015 it is 68 rows per year, a fixed set of 17 banks (782 rows). Both columns have a null share of 0.00%, so these zeros hide missing values (`results/part2_zero_pattern.txt`); handling in Part 2.3 |
 | Extreme ratios | ROA ranges from -761.9 to 860.6 (0.1th to 99.9th percentile: -22.4 to 33.1, median 0.975); ROE from -354,657.8 to 301,050 (-375.9 to 125.5, median 10.34); RBC1AAJ up to 466,500; RBCRWAJ from -16,629.6 to 274,636.4; NIMY from -4,515.2 to 1,125 |
 | Negative values in items that should not be negative | ORE 646 rows, SC 96, LNLSNET 50, LNLSGR 32, INTAN 13, INTINC 12, LNATRES 9, NCLNLS 3 |
 | Negative but legitimate | EQ negative in 15,659 rows (0.93%); NETINC negative in 172,724 rows (10.3%) |
@@ -109,6 +109,7 @@ Impossible or suspicious values:
 
 Open items:
 - Failures table has 4,117 rows and institutions has 27,835 rows. Reconciliation (Part 2.2): 4,006 institutions never appear in the panel and 235 panel banks are missing from the institutions table (27,835 − 4,006 + 235 = 24,064).
+- RBCRWAJ is unavailable in 1984-1989 (all rows) and in about 37% of rows from 2020, so it cannot be the main capital measure of the model; this is handled in Part 4.
 
 ### Part 2.2 exit classification (`results/part2_exits.txt`)
 
@@ -148,7 +149,7 @@ Output `data_storage/panel_clean/` (1,681,431 rows, 24,062 banks, 61 columns, 19
 | Structural nulls (1984-1989 items, P3ASSET before 2001) and extreme ratios | left as they are: imputation and clipping bounds are learned on training data only, inside the Part 4 pipeline | none |
 | Report not yet public when the bank failed | `avail_date` = quarter end + 35 days (assumed lag); `y_before_public` flags the affected positives | 798 of 10,860 positive rows (one per bank) |
 
-- Labelled rows: 1,663,902; positive rows: 10,860 (0.653%) from 2,837 failed banks. 2 of the 2,839 banks with a FAILURE event have no positive row: they failed in July 2026, after the last panel quarter, so their labelled rows correctly have y = 0.
+- Labelled rows: 1,663,902; positive rows: 10,860 (0.653%) from 2,837 failed banks. 2 of the 2,839 banks with a FAILURE event (the 2,841 of Part 2.2 minus the 2 excluded banks) have no positive row: they failed in July 2026, after the last panel quarter, so their labelled rows correctly have y = 0.
 - Sensitivity label `y_alt` (also counts the open-bank assistance banks and the failure-like change-code exits): 14,181 positive rows from 3,812 banks.
 - `y`, `y_alt`, `y_before_public` and `avail_date` are label or timing columns and must not be used as features.
 - Verification on the written data: 8 of 8 checks passed (row count, no duplicates, null labels only after 2025Q2, independent recount of positives, no label for non-failed banks, no row after the failure quarter, no future-revealing column, no exact zero left in the capital ratios).
