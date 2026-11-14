@@ -1,0 +1,131 @@
+panel rows read: 1,682,616 | banks: 24,064 | columns: 53
+
+== Exclusions ==
+banks with FAILDATE before their first report: 2 banks, 116 rows excluded
+rows of failed banks dated in or after the failure quarter: 1,069 rows of 268 banks dropped
+
+== Exact zeros in risk-based capital ratios (a 'not reported' code) ==
+ column  zeros_set_to_null  banks_affected first_quarter last_quarter
+RBCRWAJ             467509           20909        1984Q1       2026Q2
+RBC1AAJ              78650            3878        1984Q1       2026Q2
+rows with at least one such zero (flag_rbc_zero > 0): 467,522
+rule: an exact 0 in these ratios is treated as 'not reported' in every quarter (evidence by year in results/part2_zero_pattern.txt)
+
+== Negative values in items that cannot be negative (set to null, flagged) ==
+ORE: 641, SC: 87, LNLSNET: 50, LNLSGR: 32, INTAN: 13, INTINC: 12, LNATRES: 9, NCLNLS: 3
+rows with at least one such value: 814
+
+rows with DEP = 0 (flag_dep_zero): 12,141
+rows that follow a missing quarter (gap_before): 33 in 32 banks
+
+== Verification checks ==
+PASS  row count equals raw rows minus exclusions 1,681,431 vs 1,681,431
+PASS  no duplicate (CERT, REPDTE)
+PASS  y is null exactly after 2025Q2
+PASS  positives equal an independent recount 10,860 vs 10,860
+PASS  no positive label for banks that did not fail
+PASS  no row dated in or after the failure quarter
+PASS  no future-revealing columns written
+PASS  no exact zero left in the capital ratios
+
+== Label summary ==
+clean panel: 1,681,431 rows, 24,062 banks, 61 columns, 193.2 MB (zstd, by year)
+labelled rows (quarter <= 2025Q2): 1,663,902 | unlabelled rows (later quarters, y = null): 17,529
+y = 1 rows: 10,860 (0.653% of labelled rows) in 2,837 failed banks
+banks with a FAILURE event in the panel: 2,839; without any y = 1 row: 2 (failure dated after the labelled window: July 2026, after the last panel quarter)
+y_alt = 1 rows: 14,181 in 3,812 banks (sensitivity label, assumptions in the script header)
+y = 1 rows where the bank failed before the report was public (35-day lag): 798 (7.3% of positives)
+
+== Labelled rows and positives by quarter year ==
+ year  rows  y1_rows  y_alt1_rows  y1_pct
+ 1984 71752      427          552   0.595
+ 1985 71925      555          726   0.772
+ 1986 72143      776          957   1.076
+ 1987 70375      832         1417   1.182
+ 1988 67701     1873         2369   2.767
+ 1989 64686     1579         1768   2.441
+ 1990 62506     1158         1785   1.853
+ 1991 59921      777         1293   1.297
+ 1992 57007      380          456   0.667
+ 1993 54479       85          313   0.156
+ 1994 51867       46          117   0.089
+ 1995 49100       22           23   0.045
+ 1996 46934        8            8   0.017
+ 1997 44937       10           10   0.022
+ 1998 43075       20           20   0.046
+ 1999 41701       28           28   0.067
+ 2000 40631       21           21   0.052
+ 2001 39352       37           37   0.094
+ 2002 38204       18           18   0.047
+ 2003 37447       19           19   0.051
+ 2004 36637        1            1   0.003
+ 2005 35915        0            0   0.000
+ 2006 35407        6            6   0.017
+ 2007 34754       48           53   0.138
+ 2008 34003      355          404   1.044
+ 2009 32916      670          671   2.035
+ 2010 31545      457          457   1.449
+ 2011 30230      269          269   0.890
+ 2012 29157      129          129   0.442
+ 2013 27989       79           79   0.282
+ 2014 26805       46           46   0.172
+ 2015 25521       23           23   0.090
+ 2016 24356       29           29   0.119
+ 2017 23325        9            9   0.039
+ 2018 22301        6            6   0.027
+ 2019 21366       19           19   0.089
+ 2020 20478        7            7   0.034
+ 2021 19942        0            0   0.000
+ 2022 19285       14           14   0.073
+ 2023 18798        9            9   0.048
+ 2024 18399        9            9   0.049
+ 2025  9030        4            4   0.044
+
+== Failing banks (with at least one y = 1 row) by year of failure ==
+ fail_year  failing_banks
+      1984             62
+      1985            139
+      1986            160
+      1987            217
+      1988            231
+      1989            530
+      1990            381
+      1991            268
+      1992            179
+      1993             50
+      1994             15
+      1995              8
+      1996              6
+      1997              1
+      1998              3
+      1999              8
+      2000              7
+      2001              4
+      2002             11
+      2003              3
+      2004              4
+      2007              3
+      2008             25
+      2009            140
+      2010            157
+      2011             92
+      2012             51
+      2013             24
+      2014             18
+      2015              8
+      2016              5
+      2017              8
+      2019              4
+      2020              4
+      2023              5
+      2024              2
+      2025              2
+      2026              2
+
+Preview for the train/test design (Part 5 decides the split; the test period needs at least 50 failures):
+  failures in 1984-1992: 2,167
+  failures in 1993-2007: 123
+  failures in 2008-2014: 507
+  failures in 2015-2026: 40
+
+built in 13.6 s
