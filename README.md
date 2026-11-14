@@ -100,14 +100,14 @@ Impossible or suspicious values:
 
 | Problem | Evidence |
 |---|---|
-| Zero used as missing for risk-based capital | RBCRWAJ has 468,358 zeros (27.8% of rows) although its null share is 0.00%. The panel has 466,757 rows up to 1990Q3, within 1,601 rows of that count, so the zeros match the period before the ratio was reported (to be confirmed by counting zeros per quarter). RBC1AAJ has 79,496 zeros (4.7%) |
+| Zero used as missing for risk-based capital | RBCRWAJ is exactly 0 in every row of 1984-1989, in about 0.2-0.3% of rows in 1990-2019 and in about 35-41% of rows from 2020. RBC1AAJ is 0 in about 17-18% of rows in 1984-1989 and in about 0.2-0.4% afterwards (68 rows per year since 2015). Both columns have a null share of 0.00%, so these zeros hide missing values (`results/part2_zero_pattern.txt` for exact counts); handling in Part 2.3 |
 | Extreme ratios | ROA ranges from -761.9 to 860.6 (0.1th to 99.9th percentile: -22.4 to 33.1, median 0.975); ROE from -354,657.8 to 301,050 (-375.9 to 125.5, median 10.34); RBC1AAJ up to 466,500; RBCRWAJ from -16,629.6 to 274,636.4; NIMY from -4,515.2 to 1,125 |
 | Negative values in items that should not be negative | ORE 646 rows, SC 96, LNLSNET 50, LNLSGR 32, INTAN 13, INTINC 12, LNATRES 9, NCLNLS 3 |
 | Negative but legitimate | EQ negative in 15,659 rows (0.93%); NETINC negative in 172,724 rows (10.3%) |
 | Zero denominators | DEP = 0 in 12,141 rows, DEPDOM = 0 in 12,178, LIAB = 0 in 285 |
 | Legitimate zeros (not missing) | BRO 1,321,289 zero rows (78.5%), INTAN 71.3%, FREPP 68.9%, ORE 39.8% |
 
-Open items for the next Part 2 steps:
+Open items:
 - Failures table has 4,117 rows and institutions has 27,835 rows. Reconciliation (Part 2.2): 4,006 institutions never appear in the panel and 235 panel banks are missing from the institutions table (27,835 − 4,006 + 235 = 24,064).
 
 ### Part 2.2 exit classification (`results/part2_exits.txt`)
