@@ -1,0 +1,94 @@
+== NAIVE PLAN (as written) ==
+SORT BY [col("CERT"), col("qidx")]
+  SELECT [col("CERT"), col("qidx"), col("eq_assets"), col("npl_loans"), col("reserves_loans"), col("loans_assets"), col("liquid_assets"), col("bro_dep"), col("log_asset"), col("asset_yoy"), col("loans_yoy"), col("dep_yoy"), col("d_eq_assets_4q"), col("d_npl_loans_4q"), col("roa_q_mean4"), col("roa_q_std4"), col("roa_q_n4"), col("eq_assets_med_q"), col("npl_loans_med_q"), col("eq_assets_pct_q")]
+     WITH_COLUMNS:
+     [col("eq_assets").median().over([col("qidx")]).alias("eq_assets_med_q"), col("npl_loans").median().over([col("qidx")]).alias("npl_loans_med_q"), (col("eq_assets").rank().over([col("qidx")]) / col("eq_assets").count().over([col("qidx")]).cast(Float64)).alias("eq_assets_pct_q")] 
+      LEFT JOIN:
+      LEFT PLAN ON: [col("CERT"), col("qidx")]
+        SORT BY [col("CERT"), col("qidx")]
+           WITH_COLUMNS:
+           [when(col("ASSET_l4") > 0.0).then((col("ASSET") / col("ASSET_l4")) - 1.0).otherwise(null.cast(Float64)).alias("asset_yoy"), when(col("LNLSGR_l4") > 0.0).then((col("LNLSGR") / col("LNLSGR_l4")) - 1.0).otherwise(null.cast(Float64)).alias("loans_yoy"), when(col("DEP_l4") > 0.0).then((col("DEP") / col("DEP_l4")) - 1.0).otherwise(null.cast(Float64)).alias("dep_yoy"), (col("eq_assets") - col("eq_assets_l4")).alias("d_eq_assets_4q"), (col("npl_loans") - col("npl_loans_l4")).alias("d_npl_loans_4q")] 
+            LEFT JOIN:
+            LEFT PLAN ON: [col("CERT"), col("qidx")]
+               WITH_COLUMNS:
+               [when(col("ASSET") > 0.0).then(col("EQ") / col("ASSET")).otherwise(null.cast(Float64)).alias("eq_assets"), when(col("LNLSGR") > 0.0).then(col("NCLNLS") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("npl_loans"), when(col("LNLSGR") > 0.0).then(col("LNATRES") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("reserves_loans"), when(col("ASSET") > 0.0).then(col("LNLSGR") / col("ASSET")).otherwise(null.cast(Float64)).alias("loans_assets"), when(col("ASSET") > 0.0).then((col("CHBAL") + col("SC")) / col("ASSET")).otherwise(null.cast(Float64)).alias("liquid_assets"), when(col("DEP") > 0.0).then(col("BRO") / col("DEP")).otherwise(null.cast(Float64)).alias("bro_dep"), when(col("ASSET") > 0.0).then(col("ASSET").log([dyn float: 2.718281828459045])).otherwise(null.cast(Float64)).alias("log_asset")] 
+                SELECT [col("CERT"), col("qidx"), col("ASSET").strict_cast(Float64), col("DEP"), col("EQ"), col("LNLSGR"), col("LNATRES"), col("NCLNLS"), col("BRO"), col("CHBAL"), col("SC"), col("ROAQ").cast(Float64)]
+                  Parquet SCAN [data_storage/panel_clean/YEAR=1984/part.parquet, ... 42 other sources]
+                  PROJECT */61 COLUMNS
+                  ESTIMATED ROWS: 1711839
+            RIGHT PLAN ON: [col("CERT"), col("qidx")]
+              SELECT [col("CERT"), (col("qidx") + 4), col("ASSET").alias("ASSET_l4"), col("LNLSGR").alias("LNLSGR_l4"), col("DEP").alias("DEP_l4"), col("eq_assets").alias("eq_assets_l4"), col("npl_loans").alias("npl_loans_l4")]
+                 WITH_COLUMNS:
+                 [when(col("ASSET") > 0.0).then(col("EQ") / col("ASSET")).otherwise(null.cast(Float64)).alias("eq_assets"), when(col("LNLSGR") > 0.0).then(col("NCLNLS") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("npl_loans"), when(col("LNLSGR") > 0.0).then(col("LNATRES") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("reserves_loans"), when(col("ASSET") > 0.0).then(col("LNLSGR") / col("ASSET")).otherwise(null.cast(Float64)).alias("loans_assets"), when(col("ASSET") > 0.0).then((col("CHBAL") + col("SC")) / col("ASSET")).otherwise(null.cast(Float64)).alias("liquid_assets"), when(col("DEP") > 0.0).then(col("BRO") / col("DEP")).otherwise(null.cast(Float64)).alias("bro_dep"), when(col("ASSET") > 0.0).then(col("ASSET").log([dyn float: 2.718281828459045])).otherwise(null.cast(Float64)).alias("log_asset")] 
+                  SELECT [col("CERT"), col("qidx"), col("ASSET").strict_cast(Float64), col("DEP"), col("EQ"), col("LNLSGR"), col("LNATRES"), col("NCLNLS"), col("BRO"), col("CHBAL"), col("SC"), col("ROAQ").cast(Float64)]
+                    Parquet SCAN [data_storage/panel_clean/YEAR=1984/part.parquet, ... 42 other sources]
+                    PROJECT */61 COLUMNS
+                    ESTIMATED ROWS: 1711839
+            END LEFT JOIN
+      RIGHT PLAN ON: [col("CERT"), col("qidx")]
+        AGGREGATE[maintain_order: true]
+          [col("ROAQ").mean().alias("roa_q_mean4"), col("ROAQ").std().alias("roa_q_std4"), col("ROAQ").count().alias("roa_q_n4")] BY [col("CERT")]
+          FROM
+          SORT BY [col("CERT"), col("qidx")]
+             WITH_COLUMNS:
+             [when(col("ASSET_l4") > 0.0).then((col("ASSET") / col("ASSET_l4")) - 1.0).otherwise(null.cast(Float64)).alias("asset_yoy"), when(col("LNLSGR_l4") > 0.0).then((col("LNLSGR") / col("LNLSGR_l4")) - 1.0).otherwise(null.cast(Float64)).alias("loans_yoy"), when(col("DEP_l4") > 0.0).then((col("DEP") / col("DEP_l4")) - 1.0).otherwise(null.cast(Float64)).alias("dep_yoy"), (col("eq_assets") - col("eq_assets_l4")).alias("d_eq_assets_4q"), (col("npl_loans") - col("npl_loans_l4")).alias("d_npl_loans_4q")] 
+              LEFT JOIN:
+              LEFT PLAN ON: [col("CERT"), col("qidx")]
+                 WITH_COLUMNS:
+                 [when(col("ASSET") > 0.0).then(col("EQ") / col("ASSET")).otherwise(null.cast(Float64)).alias("eq_assets"), when(col("LNLSGR") > 0.0).then(col("NCLNLS") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("npl_loans"), when(col("LNLSGR") > 0.0).then(col("LNATRES") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("reserves_loans"), when(col("ASSET") > 0.0).then(col("LNLSGR") / col("ASSET")).otherwise(null.cast(Float64)).alias("loans_assets"), when(col("ASSET") > 0.0).then((col("CHBAL") + col("SC")) / col("ASSET")).otherwise(null.cast(Float64)).alias("liquid_assets"), when(col("DEP") > 0.0).then(col("BRO") / col("DEP")).otherwise(null.cast(Float64)).alias("bro_dep"), when(col("ASSET") > 0.0).then(col("ASSET").log([dyn float: 2.718281828459045])).otherwise(null.cast(Float64)).alias("log_asset")] 
+                  SELECT [col("CERT"), col("qidx"), col("ASSET").strict_cast(Float64), col("DEP"), col("EQ"), col("LNLSGR"), col("LNATRES"), col("NCLNLS"), col("BRO"), col("CHBAL"), col("SC"), col("ROAQ").cast(Float64)]
+                    Parquet SCAN [data_storage/panel_clean/YEAR=1984/part.parquet, ... 42 other sources]
+                    PROJECT */61 COLUMNS
+                    ESTIMATED ROWS: 1711839
+              RIGHT PLAN ON: [col("CERT"), col("qidx")]
+                SELECT [col("CERT"), (col("qidx") + 4), col("ASSET").alias("ASSET_l4"), col("LNLSGR").alias("LNLSGR_l4"), col("DEP").alias("DEP_l4"), col("eq_assets").alias("eq_assets_l4"), col("npl_loans").alias("npl_loans_l4")]
+                   WITH_COLUMNS:
+                   [when(col("ASSET") > 0.0).then(col("EQ") / col("ASSET")).otherwise(null.cast(Float64)).alias("eq_assets"), when(col("LNLSGR") > 0.0).then(col("NCLNLS") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("npl_loans"), when(col("LNLSGR") > 0.0).then(col("LNATRES") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("reserves_loans"), when(col("ASSET") > 0.0).then(col("LNLSGR") / col("ASSET")).otherwise(null.cast(Float64)).alias("loans_assets"), when(col("ASSET") > 0.0).then((col("CHBAL") + col("SC")) / col("ASSET")).otherwise(null.cast(Float64)).alias("liquid_assets"), when(col("DEP") > 0.0).then(col("BRO") / col("DEP")).otherwise(null.cast(Float64)).alias("bro_dep"), when(col("ASSET") > 0.0).then(col("ASSET").log([dyn float: 2.718281828459045])).otherwise(null.cast(Float64)).alias("log_asset")] 
+                    SELECT [col("CERT"), col("qidx"), col("ASSET").strict_cast(Float64), col("DEP"), col("EQ"), col("LNLSGR"), col("LNATRES"), col("NCLNLS"), col("BRO"), col("CHBAL"), col("SC"), col("ROAQ").cast(Float64)]
+                      Parquet SCAN [data_storage/panel_clean/YEAR=1984/part.parquet, ... 42 other sources]
+                      PROJECT */61 COLUMNS
+                      ESTIMATED ROWS: 1711839
+              END LEFT JOIN
+      END LEFT JOIN
+
+== OPTIMISED PLAN (what runs) ==
+SORT BY [col("CERT"), col("qidx")]
+   WITH_COLUMNS:
+   [col("eq_assets").median().over([col("qidx")]).alias("eq_assets_med_q"), col("npl_loans").median().over([col("qidx")]).alias("npl_loans_med_q"), (col("eq_assets").rank().over([col("qidx")]) / col("eq_assets").count().over([col("qidx")]).cast(Float64)).alias("eq_assets_pct_q")] 
+    LEFT JOIN:
+    LEFT PLAN ON: [col("CERT"), col("qidx")]
+      simple π 14/14 ["CERT", "qidx", "eq_assets", ... 11 other columns]
+        CACHE[id: 2991ef5c-1a34-477f-9051-b5377680877f]
+          SORT BY [col("CERT"), col("qidx")]
+            simple π 15/15 ["CERT", "qidx", "eq_assets", ... 12 other columns]
+               WITH_COLUMNS:
+               [when(col("ASSET_l4") > 0.0).then((col("ASSET") / col("ASSET_l4")) - 1.0).otherwise(null.cast(Float64)).alias("asset_yoy"), when(col("LNLSGR_l4") > 0.0).then((col("LNLSGR") / col("LNLSGR_l4")) - 1.0).otherwise(null.cast(Float64)).alias("loans_yoy"), when(col("DEP_l4") > 0.0).then((col("DEP") / col("DEP_l4")) - 1.0).otherwise(null.cast(Float64)).alias("dep_yoy"), (col("eq_assets") - col("eq_assets_l4")).alias("d_eq_assets_4q"), (col("npl_loans") - col("npl_loans_l4")).alias("d_npl_loans_4q")] 
+                LEFT JOIN:
+                LEFT PLAN ON: [col("CERT"), col("qidx")]
+                  simple π 13/13 ["CERT", "qidx", "ASSET", "DEP", ... 9 other columns]
+                    simple π 19/19 ["CERT", "qidx", "ASSET", "DEP", ... 15 other columns]
+                       WITH_COLUMNS:
+                       [when(col("__POLARS_CSER_0x100000006")).then(col("EQ") / col("ASSET")).otherwise(null.cast(Float64)).alias("eq_assets"), when(col("__POLARS_CSER_0x10000000a")).then(col("NCLNLS") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("npl_loans"), when(col("__POLARS_CSER_0x10000000a")).then(col("LNATRES") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("reserves_loans"), when(col("__POLARS_CSER_0x100000006")).then(col("LNLSGR") / col("ASSET")).otherwise(null.cast(Float64)).alias("loans_assets"), when(col("__POLARS_CSER_0x100000006")).then((col("CHBAL") + col("SC")) / col("ASSET")).otherwise(null.cast(Float64)).alias("liquid_assets"), when(col("DEP") > 0.0).then(col("BRO") / col("DEP")).otherwise(null.cast(Float64)).alias("bro_dep"), when(col("__POLARS_CSER_0x100000006")).then(col("ASSET").log([dyn float: 2.718281828459045])).otherwise(null.cast(Float64)).alias("log_asset")] 
+                         WITH_COLUMNS:
+                         [(col("ASSET") > 0.0).alias("__POLARS_CSER_0x100000006"), (col("LNLSGR") > 0.0).alias("__POLARS_CSER_0x10000000a")] 
+                          SELECT [col("CERT"), col("qidx"), col("ASSET").strict_cast(Float64), col("DEP"), col("EQ"), col("LNLSGR"), col("LNATRES"), col("NCLNLS"), col("BRO"), col("CHBAL"), col("SC"), col("ROAQ").cast(Float64)]
+                            Parquet SCAN [data_storage/panel_clean/YEAR=1984/part.parquet, ... 42 other sources]
+                            PROJECT 12/61 COLUMNS
+                            ESTIMATED ROWS: 1711839
+                RIGHT PLAN ON: [col("CERT"), col("qidx")]
+                  SELECT [col("CERT"), (col("qidx") + 4), col("ASSET").alias("ASSET_l4"), col("LNLSGR").alias("LNLSGR_l4"), col("DEP").alias("DEP_l4"), col("eq_assets").alias("eq_assets_l4"), col("npl_loans").alias("npl_loans_l4")]
+                    simple π 7/7 ["CERT", "qidx", "ASSET", ... 4 other columns]
+                       WITH_COLUMNS:
+                       [when(col("ASSET") > 0.0).then(col("EQ") / col("ASSET")).otherwise(null.cast(Float64)).alias("eq_assets"), when(col("LNLSGR") > 0.0).then(col("NCLNLS") / col("LNLSGR")).otherwise(null.cast(Float64)).alias("npl_loans")] 
+                        SELECT [col("CERT"), col("qidx"), col("ASSET").strict_cast(Float64), col("DEP"), col("EQ"), col("LNLSGR"), col("NCLNLS")]
+                          Parquet SCAN [data_storage/panel_clean/YEAR=1984/part.parquet, ... 42 other sources]
+                          PROJECT 7/61 COLUMNS
+                          ESTIMATED ROWS: 1711839
+                END LEFT JOIN
+    RIGHT PLAN ON: [col("CERT"), col("qidx")]
+      AGGREGATE[maintain_order: false]
+        [col("ROAQ").mean().alias("roa_q_mean4"), col("ROAQ").std().alias("roa_q_std4"), col("ROAQ").count().alias("roa_q_n4")] BY [col("CERT")]
+        FROM
+        simple π 3/3 ["CERT", "ROAQ", "qidx"]
+          CACHE[id: 2991ef5c-1a34-477f-9051-b5377680877f]
+    END LEFT JOIN

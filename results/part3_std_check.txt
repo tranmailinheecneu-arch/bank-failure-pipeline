@@ -1,0 +1,21 @@
+﻿rows compared: 1,652,719
+rows with |diff| > 1e-12: 309
+rows with |diff| > 1e-10: 5
+rows with |diff| > 1e-09: 5
+rows with |diff| > 1e-08: 3
+rows with |diff| > 1e-06: 0
+
+rows above 1e-9: 5
+pandas value exactly 0 in those rows : 0
+polars value exactly 0 in those rows : 5
+pandas value range in those rows     : 6.2301234157102425e-09 1.8564259494004216e-08
+polars value range in those rows     : 0.0 0.0
+
+worst row: CERT 28535, qidx 7974: pandas np.float64(1.8564259494004216e-08) vs polars np.float64(0.0)
+ROAQ in and just before the 4-quarter window:
+ CERT  qidx  ROAQ
+28535  7970  0.67
+28535  7971  0.69
+28535  7972  0.69
+28535  7973  0.69
+28535  7974  0.69

@@ -1,0 +1,640 @@
+== FORMATTED PHYSICAL PLAN ==
+== Physical Plan ==
+AdaptiveSparkPlan (66)
++- Sort (65)
+   +- Exchange (64)
+      +- Project (63)
+         +- SortMergeJoin LeftOuter (62)
+            :- Sort (38)
+            :  +- Exchange (37)
+            :     +- Project (36)
+            :        +- BroadcastHashJoin LeftOuter BuildRight (35)
+            :           :- Project (17)
+            :           :  +- Window (16)
+            :           :     +- Sort (15)
+            :           :        +- Exchange (14)
+            :           :           +- Project (13)
+            :           :              +- SortMergeJoin LeftOuter (12)
+            :           :                 :- Sort (5)
+            :           :                 :  +- Exchange (4)
+            :           :                 :     +- Project (3)
+            :           :                 :        +- Project (2)
+            :           :                 :           +- Scan parquet  (1)
+            :           :                 +- Sort (11)
+            :           :                    +- Exchange (10)
+            :           :                       +- Project (9)
+            :           :                          +- Project (8)
+            :           :                             +- Filter (7)
+            :           :                                +- Scan parquet  (6)
+            :           +- BroadcastExchange (34)
+            :              +- ObjectHashAggregate (33)
+            :                 +- Exchange (32)
+            :                    +- ObjectHashAggregate (31)
+            :                       +- Project (30)
+            :                          +- SortMergeJoin LeftOuter (29)
+            :                             :- Sort (23)
+            :                             :  +- Exchange (22)
+            :                             :     +- Project (21)
+            :                             :        +- Project (20)
+            :                             :           +- Filter (19)
+            :                             :              +- Scan parquet  (18)
+            :                             +- Sort (28)
+            :                                +- Exchange (27)
+            :                                   +- Project (26)
+            :                                      +- Filter (25)
+            :                                         +- Scan parquet  (24)
+            +- Sort (61)
+               +- Exchange (60)
+                  +- Project (59)
+                     +- Filter (58)
+                        +- Window (57)
+                           +- Sort (56)
+                              +- Window (55)
+                                 +- Window (54)
+                                    +- Sort (53)
+                                       +- Exchange (52)
+                                          +- Project (51)
+                                             +- SortMergeJoin LeftOuter (50)
+                                                :- Sort (44)
+                                                :  +- Exchange (43)
+                                                :     +- Project (42)
+                                                :        +- Project (41)
+                                                :           +- Filter (40)
+                                                :              +- Scan parquet  (39)
+                                                +- Sort (49)
+                                                   +- Exchange (48)
+                                                      +- Project (47)
+                                                         +- Filter (46)
+                                                            +- Scan parquet  (45)
+
+
+(1) Scan parquet 
+Output [12]: [CERT#0L, qidx#1, ASSET#2L, DEP#3, EQ#4, LNLSGR#5, LNATRES#6, NCLNLS#7, BRO#8, CHBAL#9, SC#10, ROAQ#11]
+Batched: true
+Location: InMemoryFileIndex [file:/content/spark_input.parquet]
+ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,DEP:double,EQ:double,LNLSGR:double,LNATRES:double,NCLNLS:double,BRO:double,CHBAL:double,SC:double,ROAQ:float>
+
+(2) Project
+Output [12]: [CERT#0L, qidx#1, cast(ASSET#2L as double) AS ASSET#570, DEP#3, EQ#4, LNLSGR#5, LNATRES#6, NCLNLS#7, BRO#8, CHBAL#9, SC#10, cast(ROAQ#11 as double) AS ROAQ#579]
+Input [12]: [CERT#0L, qidx#1, ASSET#2L, DEP#3, EQ#4, LNLSGR#5, LNATRES#6, NCLNLS#7, BRO#8, CHBAL#9, SC#10, ROAQ#11]
+
+(3) Project
+Output [13]: [CERT#0L, qidx#1, ASSET#570, DEP#3, LNLSGR#5, ROAQ#579, CASE WHEN (ASSET#570 > 0.0) THEN (EQ#4 / ASSET#570) END AS eq_assets#580, CASE WHEN (LNLSGR#5 > 0.0) THEN (NCLNLS#7 / LNLSGR#5) END AS npl_loans#581, CASE WHEN (LNLSGR#5 > 0.0) THEN (LNATRES#6 / LNLSGR#5) END AS reserves_loans#582, CASE WHEN (ASSET#570 > 0.0) THEN (LNLSGR#5 / ASSET#570) END AS loans_assets#583, CASE WHEN (ASSET#570 > 0.0) THEN ((CHBAL#9 + SC#10) / ASSET#570) END AS liquid_assets#584, CASE WHEN (DEP#3 > 0.0) THEN (BRO#8 / DEP#3) END AS bro_dep#585, CASE WHEN (ASSET#570 > 0.0) THEN ln(ASSET#570) END AS log_asset#586]
+Input [12]: [CERT#0L, qidx#1, ASSET#570, DEP#3, EQ#4, LNLSGR#5, LNATRES#6, NCLNLS#7, BRO#8, CHBAL#9, SC#10, ROAQ#579]
+
+(4) Exchange
+Input [13]: [CERT#0L, qidx#1, ASSET#570, DEP#3, LNLSGR#5, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586]
+Arguments: hashpartitioning(CERT#0L, qidx#1, 16), ENSURE_REQUIREMENTS, [plan_id=1905]
+
+(5) Sort
+Input [13]: [CERT#0L, qidx#1, ASSET#570, DEP#3, LNLSGR#5, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586]
+Arguments: [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], false, 0
+
+(6) Scan parquet 
+Output [7]: [CERT#593L, qidx#594, ASSET#595L, DEP#596, EQ#597, LNLSGR#598, NCLNLS#600]
+Batched: true
+Location: InMemoryFileIndex [file:/content/spark_input.parquet]
+PushedFilters: [IsNotNull(CERT)]
+ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,DEP:double,EQ:double,LNLSGR:double,NCLNLS:double>
+
+(7) Filter
+Input [7]: [CERT#593L, qidx#594, ASSET#595L, DEP#596, EQ#597, LNLSGR#598, NCLNLS#600]
+Condition : (isnotnull(CERT#593L) AND isnotnull((qidx#594 + 4)))
+
+(8) Project
+Output [7]: [CERT#593L, qidx#594, cast(ASSET#595L as double) AS ASSET#605, DEP#596, EQ#597, LNLSGR#598, NCLNLS#600]
+Input [7]: [CERT#593L, qidx#594, ASSET#595L, DEP#596, EQ#597, LNLSGR#598, NCLNLS#600]
+
+(9) Project
+Output [7]: [CERT#593L, (qidx#594 + 4) AS qidx#587, ASSET#605 AS ASSET_l4#588, LNLSGR#598 AS LNLSGR_l4#589, DEP#596 AS DEP_l4#590, CASE WHEN (ASSET#605 > 0.0) THEN (EQ#597 / ASSET#605) END AS eq_assets_l4#591, CASE WHEN (LNLSGR#598 > 0.0) THEN (NCLNLS#600 / LNLSGR#598) END AS npl_loans_l4#592]
+Input [7]: [CERT#593L, qidx#594, ASSET#605, DEP#596, EQ#597, LNLSGR#598, NCLNLS#600]
+
+(10) Exchange
+Input [7]: [CERT#593L, qidx#587, ASSET_l4#588, LNLSGR_l4#589, DEP_l4#590, eq_assets_l4#591, npl_loans_l4#592]
+Arguments: hashpartitioning(CERT#593L, qidx#587, 16), ENSURE_REQUIREMENTS, [plan_id=1906]
+
+(11) Sort
+Input [7]: [CERT#593L, qidx#587, ASSET_l4#588, LNLSGR_l4#589, DEP_l4#590, eq_assets_l4#591, npl_loans_l4#592]
+Arguments: [CERT#593L ASC NULLS FIRST, qidx#587 ASC NULLS FIRST], false, 0
+
+(12) SortMergeJoin
+Left keys [2]: [CERT#0L, qidx#1]
+Right keys [2]: [CERT#593L, qidx#587]
+Join type: LeftOuter
+Join condition: None
+
+(13) Project
+Output [15]: [CERT#0L, qidx#1, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, CASE WHEN (ASSET_l4#588 > 0.0) THEN ((ASSET#570 / ASSET_l4#588) - 1.0) END AS asset_yoy#623, CASE WHEN (LNLSGR_l4#589 > 0.0) THEN ((LNLSGR#5 / LNLSGR_l4#589) - 1.0) END AS loans_yoy#624, CASE WHEN (DEP_l4#590 > 0.0) THEN ((DEP#3 / DEP_l4#590) - 1.0) END AS dep_yoy#625, (eq_assets#580 - eq_assets_l4#591) AS d_eq_assets_4q#626, (npl_loans#581 - npl_loans_l4#592) AS d_npl_loans_4q#627]
+Input [20]: [CERT#0L, qidx#1, ASSET#570, DEP#3, LNLSGR#5, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, CERT#593L, qidx#587, ASSET_l4#588, LNLSGR_l4#589, DEP_l4#590, eq_assets_l4#591, npl_loans_l4#592]
+
+(14) Exchange
+Input [15]: [CERT#0L, qidx#1, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627]
+Arguments: hashpartitioning(CERT#0L, 16), ENSURE_REQUIREMENTS, [plan_id=1912]
+
+(15) Sort
+Input [15]: [CERT#0L, qidx#1, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627]
+Arguments: [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], false, 0
+
+(16) Window
+Input [15]: [CERT#0L, qidx#1, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627]
+Arguments: [avg(ROAQ#579) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_mean4#628, stddev_samp(ROAQ#579) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_std4#629, count(ROAQ#579) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_n4#630L], [CERT#0L], [qidx#1 ASC NULLS FIRST]
+
+(17) Project
+Output [17]: [CERT#0L, qidx#1, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L]
+Input [18]: [CERT#0L, qidx#1, ROAQ#579, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L]
+
+(18) Scan parquet 
+Output [6]: [CERT#678L, qidx#679, ASSET#680L, EQ#682, LNLSGR#683, NCLNLS#685]
+Batched: true
+Location: InMemoryFileIndex [file:/content/spark_input.parquet]
+PushedFilters: [IsNotNull(qidx)]
+ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,EQ:double,LNLSGR:double,NCLNLS:double>
+
+(19) Filter
+Input [6]: [CERT#678L, qidx#679, ASSET#680L, EQ#682, LNLSGR#683, NCLNLS#685]
+Condition : isnotnull(qidx#679)
+
+(20) Project
+Output [6]: [CERT#678L, qidx#679, cast(ASSET#680L as double) AS ASSET#690, EQ#682, LNLSGR#683, NCLNLS#685]
+Input [6]: [CERT#678L, qidx#679, ASSET#680L, EQ#682, LNLSGR#683, NCLNLS#685]
+
+(21) Project
+Output [4]: [CERT#678L, qidx#679, CASE WHEN (ASSET#690 > 0.0) THEN (EQ#682 / ASSET#690) END AS eq_assets#700, CASE WHEN (LNLSGR#683 > 0.0) THEN (NCLNLS#685 / LNLSGR#683) END AS npl_loans#701]
+Input [6]: [CERT#678L, qidx#679, ASSET#690, EQ#682, LNLSGR#683, NCLNLS#685]
+
+(22) Exchange
+Input [4]: [CERT#678L, qidx#679, eq_assets#700, npl_loans#701]
+Arguments: hashpartitioning(CERT#678L, qidx#679, 16), ENSURE_REQUIREMENTS, [plan_id=1917]
+
+(23) Sort
+Input [4]: [CERT#678L, qidx#679, eq_assets#700, npl_loans#701]
+Arguments: [CERT#678L ASC NULLS FIRST, qidx#679 ASC NULLS FIRST], false, 0
+
+(24) Scan parquet 
+Output [2]: [CERT#707L, qidx#708]
+Batched: true
+Location: InMemoryFileIndex [file:/content/spark_input.parquet]
+PushedFilters: [IsNotNull(CERT)]
+ReadSchema: struct<CERT:bigint,qidx:int>
+
+(25) Filter
+Input [2]: [CERT#707L, qidx#708]
+Condition : (isnotnull(CERT#707L) AND isnotnull((qidx#708 + 4)))
+
+(26) Project
+Output [2]: [CERT#707L, (qidx#708 + 4) AS qidx#736]
+Input [2]: [CERT#707L, qidx#708]
+
+(27) Exchange
+Input [2]: [CERT#707L, qidx#736]
+Arguments: hashpartitioning(CERT#707L, qidx#736, 16), ENSURE_REQUIREMENTS, [plan_id=1918]
+
+(28) Sort
+Input [2]: [CERT#707L, qidx#736]
+Arguments: [CERT#707L ASC NULLS FIRST, qidx#736 ASC NULLS FIRST], false, 0
+
+(29) SortMergeJoin
+Left keys [2]: [CERT#678L, qidx#679]
+Right keys [2]: [CERT#707L, qidx#736]
+Join type: LeftOuter
+Join condition: None
+
+(30) Project
+Output [3]: [qidx#679, eq_assets#700, npl_loans#701]
+Input [6]: [CERT#678L, qidx#679, eq_assets#700, npl_loans#701, CERT#707L, qidx#736]
+
+(31) ObjectHashAggregate
+Input [3]: [qidx#679, eq_assets#700, npl_loans#701]
+Keys [1]: [qidx#679]
+Functions [2]: [partial_percentile(eq_assets#700, 0.5, 1, 0, 0, false), partial_percentile(npl_loans#701, 0.5, 1, 0, 0, false)]
+Aggregate Attributes [2]: [buf#946, buf#947]
+Results [3]: [qidx#679, buf#948, buf#949]
+
+(32) Exchange
+Input [3]: [qidx#679, buf#948, buf#949]
+Arguments: hashpartitioning(qidx#679, 16), ENSURE_REQUIREMENTS, [plan_id=1925]
+
+(33) ObjectHashAggregate
+Input [3]: [qidx#679, buf#948, buf#949]
+Keys [1]: [qidx#679]
+Functions [2]: [percentile(eq_assets#700, 0.5, 1, 0, 0, false), percentile(npl_loans#701, 0.5, 1, 0, 0, false)]
+Aggregate Attributes [2]: [percentile(eq_assets#700, 0.5, 1, 0, 0, false)#676, percentile(npl_loans#701, 0.5, 1, 0, 0, false)#677]
+Results [3]: [qidx#679, percentile(eq_assets#700, 0.5, 1, 0, 0, false)#676 AS eq_assets_med_q#642, percentile(npl_loans#701, 0.5, 1, 0, 0, false)#677 AS npl_loans_med_q#643]
+
+(34) BroadcastExchange
+Input [3]: [qidx#679, eq_assets_med_q#642, npl_loans_med_q#643]
+Arguments: HashedRelationBroadcastMode(List(cast(input[0, int, true] as bigint)),false), [plan_id=1928]
+
+(35) BroadcastHashJoin
+Left keys [1]: [qidx#1]
+Right keys [1]: [qidx#679]
+Join type: LeftOuter
+Join condition: None
+
+(36) Project
+Output [19]: [qidx#1, CERT#0L, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643]
+Input [20]: [CERT#0L, qidx#1, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, qidx#679, eq_assets_med_q#642, npl_loans_med_q#643]
+
+(37) Exchange
+Input [19]: [qidx#1, CERT#0L, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643]
+Arguments: hashpartitioning(CERT#0L, qidx#1, 16), ENSURE_REQUIREMENTS, [plan_id=1950]
+
+(38) Sort
+Input [19]: [qidx#1, CERT#0L, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643]
+Arguments: [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], false, 0
+
+(39) Scan parquet 
+Output [4]: [CERT#774L, qidx#775, ASSET#776L, EQ#778]
+Batched: true
+Location: InMemoryFileIndex [file:/content/spark_input.parquet]
+PushedFilters: [IsNotNull(qidx)]
+ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,EQ:double>
+
+(40) Filter
+Input [4]: [CERT#774L, qidx#775, ASSET#776L, EQ#778]
+Condition : (CASE WHEN (cast(ASSET#776L as double) > 0.0) THEN isnotnull((EQ#778 / cast(ASSET#776L as double))) ELSE false END AND isnotnull(qidx#775))
+
+(41) Project
+Output [4]: [CERT#774L, qidx#775, cast(ASSET#776L as double) AS ASSET#786, EQ#778]
+Input [4]: [CERT#774L, qidx#775, ASSET#776L, EQ#778]
+
+(42) Project
+Output [3]: [CERT#774L, qidx#775, CASE WHEN (ASSET#786 > 0.0) THEN (EQ#778 / ASSET#786) END AS eq_assets#796]
+Input [4]: [CERT#774L, qidx#775, ASSET#786, EQ#778]
+
+(43) Exchange
+Input [3]: [CERT#774L, qidx#775, eq_assets#796]
+Arguments: hashpartitioning(CERT#774L, qidx#775, 16), ENSURE_REQUIREMENTS, [plan_id=1932]
+
+(44) Sort
+Input [3]: [CERT#774L, qidx#775, eq_assets#796]
+Arguments: [CERT#774L ASC NULLS FIRST, qidx#775 ASC NULLS FIRST], false, 0
+
+(45) Scan parquet 
+Output [2]: [CERT#803L, qidx#804]
+Batched: true
+Location: InMemoryFileIndex [file:/content/spark_input.parquet]
+PushedFilters: [IsNotNull(CERT)]
+ReadSchema: struct<CERT:bigint,qidx:int>
+
+(46) Filter
+Input [2]: [CERT#803L, qidx#804]
+Condition : (isnotnull(CERT#803L) AND isnotnull((qidx#804 + 4)))
+
+(47) Project
+Output [2]: [CERT#803L, (qidx#804 + 4) AS qidx#832]
+Input [2]: [CERT#803L, qidx#804]
+
+(48) Exchange
+Input [2]: [CERT#803L, qidx#832]
+Arguments: hashpartitioning(CERT#803L, qidx#832, 16), ENSURE_REQUIREMENTS, [plan_id=1933]
+
+(49) Sort
+Input [2]: [CERT#803L, qidx#832]
+Arguments: [CERT#803L ASC NULLS FIRST, qidx#832 ASC NULLS FIRST], false, 0
+
+(50) SortMergeJoin
+Left keys [2]: [CERT#774L, qidx#775]
+Right keys [2]: [CERT#803L, qidx#832]
+Join type: LeftOuter
+Join condition: None
+
+(51) Project
+Output [3]: [CERT#774L, qidx#775, eq_assets#796]
+Input [5]: [CERT#774L, qidx#775, eq_assets#796, CERT#803L, qidx#832]
+
+(52) Exchange
+Input [3]: [CERT#774L, qidx#775, eq_assets#796]
+Arguments: hashpartitioning(qidx#775, 16), ENSURE_REQUIREMENTS, [plan_id=1939]
+
+(53) Sort
+Input [3]: [CERT#774L, qidx#775, eq_assets#796]
+Arguments: [qidx#775 ASC NULLS FIRST, eq_assets#796 ASC NULLS FIRST], false, 0
+
+(54) Window
+Input [3]: [CERT#774L, qidx#775, eq_assets#796]
+Arguments: [rank(eq_assets#796) windowspecdefinition(qidx#775, eq_assets#796 ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rk_min#760], [qidx#775], [eq_assets#796 ASC NULLS FIRST]
+
+(55) Window
+Input [4]: [CERT#774L, qidx#775, eq_assets#796, rk_min#760]
+Arguments: [count(1) windowspecdefinition(qidx#775, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS n#762L], [qidx#775]
+
+(56) Sort
+Input [5]: [CERT#774L, qidx#775, eq_assets#796, rk_min#760, n#762L]
+Arguments: [qidx#775 ASC NULLS FIRST, knownfloatingpointnormalized(normalizenanandzero(eq_assets#796)) ASC NULLS FIRST], false, 0
+
+(57) Window
+Input [5]: [CERT#774L, qidx#775, eq_assets#796, rk_min#760, n#762L]
+Arguments: [count(1) windowspecdefinition(qidx#775, eq_assets#796, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS ties#761L], [qidx#775, knownfloatingpointnormalized(normalizenanandzero(eq_assets#796))]
+
+(58) Filter
+Input [6]: [CERT#774L, qidx#775, eq_assets#796, rk_min#760, n#762L, ties#761L]
+Condition : isnotnull(CERT#774L)
+
+(59) Project
+Output [3]: [CERT#774L, qidx#775, ((cast(rk_min#760 as double) + (cast((ties#761L - 1) as double) / 2.0)) / cast(n#762L as double)) AS eq_assets_pct_q#773]
+Input [6]: [CERT#774L, qidx#775, eq_assets#796, rk_min#760, n#762L, ties#761L]
+
+(60) Exchange
+Input [3]: [CERT#774L, qidx#775, eq_assets_pct_q#773]
+Arguments: hashpartitioning(CERT#774L, qidx#775, 16), ENSURE_REQUIREMENTS, [plan_id=1951]
+
+(61) Sort
+Input [3]: [CERT#774L, qidx#775, eq_assets_pct_q#773]
+Arguments: [CERT#774L ASC NULLS FIRST, qidx#775 ASC NULLS FIRST], false, 0
+
+(62) SortMergeJoin
+Left keys [2]: [CERT#0L, qidx#1]
+Right keys [2]: [CERT#774L, qidx#775]
+Join type: LeftOuter
+Join condition: None
+
+(63) Project
+Output [20]: [CERT#0L, qidx#1, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643, eq_assets_pct_q#773]
+Input [22]: [qidx#1, CERT#0L, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643, CERT#774L, qidx#775, eq_assets_pct_q#773]
+
+(64) Exchange
+Input [20]: [CERT#0L, qidx#1, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643, eq_assets_pct_q#773]
+Arguments: rangepartitioning(CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST, 16), ENSURE_REQUIREMENTS, [plan_id=1957]
+
+(65) Sort
+Input [20]: [CERT#0L, qidx#1, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643, eq_assets_pct_q#773]
+Arguments: [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], true, 0
+
+(66) AdaptiveSparkPlan
+Output [20]: [CERT#0L, qidx#1, eq_assets#580, npl_loans#581, reserves_loans#582, loans_assets#583, liquid_assets#584, bro_dep#585, log_asset#586, asset_yoy#623, loans_yoy#624, dep_yoy#625, d_eq_assets_4q#626, d_npl_loans_4q#627, roa_q_mean4#628, roa_q_std4#629, roa_q_n4#630L, eq_assets_med_q#642, npl_loans_med_q#643, eq_assets_pct_q#773]
+Arguments: isFinalPlan=false
+
+
+
+
+== EXTENDED (parsed, analysed, optimised, physical) ==
+== Parsed Logical Plan ==
+'Sort ['CERT ASC NULLS FIRST, 'qidx ASC NULLS FIRST], true
++- Project [CERT#0L, qidx#1, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L, eq_assets_med_q#1022, npl_loans_med_q#1023, eq_assets_pct_q#1153]
+   +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 10 more fields]
+      +- Join LeftOuter, ((CERT#0L = CERT#1154L) AND (qidx#1 = qidx#1155))
+         :- Project [qidx#1, CERT#0L, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 9 more fields]
+         :  +- Join LeftOuter, (qidx#1 = qidx#1059)
+         :     :- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 7 more fields]
+         :     :  +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 10 more fields]
+         :     :     +- Window [avg(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1008, stddev_samp(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1009, count(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1010L], [CERT#0L], [qidx#1 ASC NULLS FIRST]
+         :     :        +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 4 more fields]
+         :     :           +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, CASE WHEN (ASSET_l4#968 > cast(0 as double)) THEN ((ASSET#950 / ASSET_l4#968) - cast(1 as double)) END AS asset_yoy#1003, ... 4 more fields]
+         :     :              +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972]
+         :     :                 +- Join LeftOuter, ((CERT#0L = CERT#973L) AND (qidx#1 = qidx#967))
+         :     :                    :- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, CASE WHEN (ASSET#950 > cast(0 as double)) THEN (EQ#952 / ASSET#950) END AS eq_assets#960, CASE WHEN (LNLSGR#953 > cast(0 as double)) THEN (NCLNLS#955 / LNLSGR#953) END AS npl_loans#961, CASE WHEN (LNLSGR#953 > cast(0 as double)) THEN (LNATRES#954 / LNLSGR#953) END AS reserves_loans#962, CASE WHEN (ASSET#950 > cast(0 as double)) THEN (LNLSGR#953 / ASSET#950) END AS loans_assets#963, CASE WHEN (ASSET#950 > cast(0 as double)) THEN ((CHBAL#957 + SC#958) / ASSET#950) END AS liquid_assets#964, CASE WHEN (DEP#951 > cast(0 as double)) THEN (BRO#956 / DEP#951) END AS bro_dep#965, CASE WHEN (ASSET#950 > cast(0 as double)) THEN ln(ASSET#950) END AS log_asset#966]
+         :     :                    :  +- Project [CERT#0L, qidx#1, cast(ASSET#2L as double) AS ASSET#950, cast(DEP#3 as double) AS DEP#951, cast(EQ#4 as double) AS EQ#952, cast(LNLSGR#5 as double) AS LNLSGR#953, cast(LNATRES#6 as double) AS LNATRES#954, cast(NCLNLS#7 as double) AS NCLNLS#955, cast(BRO#8 as double) AS BRO#956, cast(CHBAL#9 as double) AS CHBAL#957, cast(SC#10 as double) AS SC#958, cast(ROAQ#11 as double) AS ROAQ#959]
+         :     :                    :     +- Relation [CERT#0L,qidx#1,ASSET#2L,DEP#3,EQ#4,LNLSGR#5,LNATRES#6,NCLNLS#7,BRO#8,CHBAL#9,SC#10,ROAQ#11] parquet
+         :     :                    +- Project [CERT#973L, (qidx#974 + 4) AS qidx#967, ASSET#985 AS ASSET_l4#968, LNLSGR#988 AS LNLSGR_l4#969, DEP#986 AS DEP_l4#970, eq_assets#995 AS eq_assets_l4#971, npl_loans#996 AS npl_loans_l4#972]
+         :     :                       +- Project [CERT#973L, qidx#974, ASSET#985, DEP#986, EQ#987, LNLSGR#988, LNATRES#989, NCLNLS#990, BRO#991, CHBAL#992, SC#993, ROAQ#994, CASE WHEN (ASSET#985 > cast(0 as double)) THEN (EQ#987 / ASSET#985) END AS eq_assets#995, CASE WHEN (LNLSGR#988 > cast(0 as double)) THEN (NCLNLS#990 / LNLSGR#988) END AS npl_loans#996, CASE WHEN (LNLSGR#988 > cast(0 as double)) THEN (LNATRES#989 / LNLSGR#988) END AS reserves_loans#997, CASE WHEN (ASSET#985 > cast(0 as double)) THEN (LNLSGR#988 / ASSET#985) END AS loans_assets#998, CASE WHEN (ASSET#985 > cast(0 as double)) THEN ((CHBAL#992 + SC#993) / ASSET#985) END AS liquid_assets#999, CASE WHEN (DEP#986 > cast(0 as double)) THEN (BRO#991 / DEP#986) END AS bro_dep#1000, CASE WHEN (ASSET#985 > cast(0 as double)) THEN ln(ASSET#985) END AS log_asset#1001]
+         :     :                          +- Project [CERT#973L, qidx#974, cast(ASSET#975L as double) AS ASSET#985, cast(DEP#976 as double) AS DEP#986, cast(EQ#977 as double) AS EQ#987, cast(LNLSGR#978 as double) AS LNLSGR#988, cast(LNATRES#979 as double) AS LNATRES#989, cast(NCLNLS#980 as double) AS NCLNLS#990, cast(BRO#981 as double) AS BRO#991, cast(CHBAL#982 as double) AS CHBAL#992, cast(SC#983 as double) AS SC#993, cast(ROAQ#984 as double) AS ROAQ#994]
+         :     :                             +- Relation [CERT#973L,qidx#974,ASSET#975L,DEP#976,EQ#977,LNLSGR#978,LNATRES#979,NCLNLS#980,BRO#981,CHBAL#982,SC#983,ROAQ#984] parquet
+         :     +- ResolvedHint (strategy=broadcast)
+         :        +- Aggregate [qidx#1059], [qidx#1059, percentile(eq_assets#1080, cast(0.5 as double), 1, 0, 0, false) AS eq_assets_med_q#1022, percentile(npl_loans#1081, cast(0.5 as double), 1, 0, 0, false) AS npl_loans_med_q#1023]
+         :           +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, asset_yoy#1122, ... 7 more fields]
+         :              +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, asset_yoy#1122, ... 10 more fields]
+         :                 +- Window [avg(ROAQ#1079) windowspecdefinition(CERT#1058L, qidx#1059 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1135, stddev_samp(ROAQ#1079) windowspecdefinition(CERT#1058L, qidx#1059 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1136, count(ROAQ#1079) windowspecdefinition(CERT#1058L, qidx#1059 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1137L], [CERT#1058L], [qidx#1059 ASC NULLS FIRST]
+         :                    +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, asset_yoy#1122, ... 4 more fields]
+         :                       +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, CASE WHEN (ASSET_l4#1117 > cast(0 as double)) THEN ((ASSET#1070 / ASSET_l4#1117) - cast(1 as double)) END AS asset_yoy#1122, ... 4 more fields]
+         :                          +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121]
+         :                             +- Join LeftOuter, ((CERT#1058L = CERT#1087L) AND (qidx#1059 = qidx#1116))
+         :                                :- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN (EQ#1072 / ASSET#1070) END AS eq_assets#1080, CASE WHEN (LNLSGR#1073 > cast(0 as double)) THEN (NCLNLS#1075 / LNLSGR#1073) END AS npl_loans#1081, CASE WHEN (LNLSGR#1073 > cast(0 as double)) THEN (LNATRES#1074 / LNLSGR#1073) END AS reserves_loans#1082, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN (LNLSGR#1073 / ASSET#1070) END AS loans_assets#1083, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN ((CHBAL#1077 + SC#1078) / ASSET#1070) END AS liquid_assets#1084, CASE WHEN (DEP#1071 > cast(0 as double)) THEN (BRO#1076 / DEP#1071) END AS bro_dep#1085, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN ln(ASSET#1070) END AS log_asset#1086]
+         :                                :  +- Project [CERT#1058L, qidx#1059, cast(ASSET#1060L as double) AS ASSET#1070, cast(DEP#1061 as double) AS DEP#1071, cast(EQ#1062 as double) AS EQ#1072, cast(LNLSGR#1063 as double) AS LNLSGR#1073, cast(LNATRES#1064 as double) AS LNATRES#1074, cast(NCLNLS#1065 as double) AS NCLNLS#1075, cast(BRO#1066 as double) AS BRO#1076, cast(CHBAL#1067 as double) AS CHBAL#1077, cast(SC#1068 as double) AS SC#1078, cast(ROAQ#1069 as double) AS ROAQ#1079]
+         :                                :     +- Relation [CERT#1058L,qidx#1059,ASSET#1060L,DEP#1061,EQ#1062,LNLSGR#1063,LNATRES#1064,NCLNLS#1065,BRO#1066,CHBAL#1067,SC#1068,ROAQ#1069] parquet
+         :                                +- Project [CERT#1087L, (qidx#1088 + 4) AS qidx#1116, ASSET#1099 AS ASSET_l4#1117, LNLSGR#1102 AS LNLSGR_l4#1118, DEP#1100 AS DEP_l4#1119, eq_assets#1109 AS eq_assets_l4#1120, npl_loans#1110 AS npl_loans_l4#1121]
+         :                                   +- Project [CERT#1087L, qidx#1088, ASSET#1099, DEP#1100, EQ#1101, LNLSGR#1102, LNATRES#1103, NCLNLS#1104, BRO#1105, CHBAL#1106, SC#1107, ROAQ#1108, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN (EQ#1101 / ASSET#1099) END AS eq_assets#1109, CASE WHEN (LNLSGR#1102 > cast(0 as double)) THEN (NCLNLS#1104 / LNLSGR#1102) END AS npl_loans#1110, CASE WHEN (LNLSGR#1102 > cast(0 as double)) THEN (LNATRES#1103 / LNLSGR#1102) END AS reserves_loans#1111, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN (LNLSGR#1102 / ASSET#1099) END AS loans_assets#1112, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN ((CHBAL#1106 + SC#1107) / ASSET#1099) END AS liquid_assets#1113, CASE WHEN (DEP#1100 > cast(0 as double)) THEN (BRO#1105 / DEP#1100) END AS bro_dep#1114, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN ln(ASSET#1099) END AS log_asset#1115]
+         :                                      +- Project [CERT#1087L, qidx#1088, cast(ASSET#1089L as double) AS ASSET#1099, cast(DEP#1090 as double) AS DEP#1100, cast(EQ#1091 as double) AS EQ#1101, cast(LNLSGR#1092 as double) AS LNLSGR#1102, cast(LNATRES#1093 as double) AS LNATRES#1103, cast(NCLNLS#1094 as double) AS NCLNLS#1104, cast(BRO#1095 as double) AS BRO#1105, cast(CHBAL#1096 as double) AS CHBAL#1106, cast(SC#1097 as double) AS SC#1107, cast(ROAQ#1098 as double) AS ROAQ#1108]
+         :                                         +- Relation [CERT#1087L,qidx#1088,ASSET#1089L,DEP#1090,EQ#1091,LNLSGR#1092,LNATRES#1093,NCLNLS#1094,BRO#1095,CHBAL#1096,SC#1097,ROAQ#1098] parquet
+         +- Project [CERT#1154L, qidx#1155, ((cast(rk_min#1140 as double) + (cast((ties#1141L - cast(1 as bigint)) as double) / cast(2.0 as double))) / cast(n#1142L as double)) AS eq_assets_pct_q#1153]
+            +- Project [CERT#1154L, qidx#1155, rk_min#1140, ties#1141L, n#1142L]
+               +- Project [CERT#1154L, qidx#1155, eq_assets#1176, rk_min#1140, ties#1141L, n#1142L, rk_min#1140, ties#1141L, n#1142L]
+                  +- Window [count(1) windowspecdefinition(qidx#1155, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS n#1142L], [qidx#1155]
+                     +- Window [count(1) windowspecdefinition(qidx#1155, eq_assets#1176, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS ties#1141L], [qidx#1155, eq_assets#1176]
+                        +- Window [rank(eq_assets#1176) windowspecdefinition(qidx#1155, eq_assets#1176 ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rk_min#1140], [qidx#1155], [eq_assets#1176 ASC NULLS FIRST]
+                           +- Project [CERT#1154L, qidx#1155, eq_assets#1176]
+                              +- Project [CERT#1154L, qidx#1155, eq_assets#1176]
+                                 +- Filter isnotnull(eq_assets#1176)
+                                    +- Project [qidx#1155, CERT#1154L, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 9 more fields]
+                                       +- Join LeftOuter, (qidx#1155 = qidx#1235)
+                                          :- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 7 more fields]
+                                          :  +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 10 more fields]
+                                          :     +- Window [avg(ROAQ#1175) windowspecdefinition(CERT#1154L, qidx#1155 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1231, stddev_samp(ROAQ#1175) windowspecdefinition(CERT#1154L, qidx#1155 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1232, count(ROAQ#1175) windowspecdefinition(CERT#1154L, qidx#1155 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1233L], [CERT#1154L], [qidx#1155 ASC NULLS FIRST]
+                                          :        +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 4 more fields]
+                                          :           +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, CASE WHEN (ASSET_l4#1213 > cast(0 as double)) THEN ((ASSET#1166 / ASSET_l4#1213) - cast(1 as double)) END AS asset_yoy#1218, ... 4 more fields]
+                                          :              +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217]
+                                          :                 +- Join LeftOuter, ((CERT#1154L = CERT#1183L) AND (qidx#1155 = qidx#1212))
+                                          :                    :- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN (EQ#1168 / ASSET#1166) END AS eq_assets#1176, CASE WHEN (LNLSGR#1169 > cast(0 as double)) THEN (NCLNLS#1171 / LNLSGR#1169) END AS npl_loans#1177, CASE WHEN (LNLSGR#1169 > cast(0 as double)) THEN (LNATRES#1170 / LNLSGR#1169) END AS reserves_loans#1178, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN (LNLSGR#1169 / ASSET#1166) END AS loans_assets#1179, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN ((CHBAL#1173 + SC#1174) / ASSET#1166) END AS liquid_assets#1180, CASE WHEN (DEP#1167 > cast(0 as double)) THEN (BRO#1172 / DEP#1167) END AS bro_dep#1181, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN ln(ASSET#1166) END AS log_asset#1182]
+                                          :                    :  +- Project [CERT#1154L, qidx#1155, cast(ASSET#1156L as double) AS ASSET#1166, cast(DEP#1157 as double) AS DEP#1167, cast(EQ#1158 as double) AS EQ#1168, cast(LNLSGR#1159 as double) AS LNLSGR#1169, cast(LNATRES#1160 as double) AS LNATRES#1170, cast(NCLNLS#1161 as double) AS NCLNLS#1171, cast(BRO#1162 as double) AS BRO#1172, cast(CHBAL#1163 as double) AS CHBAL#1173, cast(SC#1164 as double) AS SC#1174, cast(ROAQ#1165 as double) AS ROAQ#1175]
+                                          :                    :     +- Relation [CERT#1154L,qidx#1155,ASSET#1156L,DEP#1157,EQ#1158,LNLSGR#1159,LNATRES#1160,NCLNLS#1161,BRO#1162,CHBAL#1163,SC#1164,ROAQ#1165] parquet
+                                          :                    +- Project [CERT#1183L, (qidx#1184 + 4) AS qidx#1212, ASSET#1195 AS ASSET_l4#1213, LNLSGR#1198 AS LNLSGR_l4#1214, DEP#1196 AS DEP_l4#1215, eq_assets#1205 AS eq_assets_l4#1216, npl_loans#1206 AS npl_loans_l4#1217]
+                                          :                       +- Project [CERT#1183L, qidx#1184, ASSET#1195, DEP#1196, EQ#1197, LNLSGR#1198, LNATRES#1199, NCLNLS#1200, BRO#1201, CHBAL#1202, SC#1203, ROAQ#1204, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN (EQ#1197 / ASSET#1195) END AS eq_assets#1205, CASE WHEN (LNLSGR#1198 > cast(0 as double)) THEN (NCLNLS#1200 / LNLSGR#1198) END AS npl_loans#1206, CASE WHEN (LNLSGR#1198 > cast(0 as double)) THEN (LNATRES#1199 / LNLSGR#1198) END AS reserves_loans#1207, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN (LNLSGR#1198 / ASSET#1195) END AS loans_assets#1208, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN ((CHBAL#1202 + SC#1203) / ASSET#1195) END AS liquid_assets#1209, CASE WHEN (DEP#1196 > cast(0 as double)) THEN (BRO#1201 / DEP#1196) END AS bro_dep#1210, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN ln(ASSET#1195) END AS log_asset#1211]
+                                          :                          +- Project [CERT#1183L, qidx#1184, cast(ASSET#1185L as double) AS ASSET#1195, cast(DEP#1186 as double) AS DEP#1196, cast(EQ#1187 as double) AS EQ#1197, cast(LNLSGR#1188 as double) AS LNLSGR#1198, cast(LNATRES#1189 as double) AS LNATRES#1199, cast(NCLNLS#1190 as double) AS NCLNLS#1200, cast(BRO#1191 as double) AS BRO#1201, cast(CHBAL#1192 as double) AS CHBAL#1202, cast(SC#1193 as double) AS SC#1203, cast(ROAQ#1194 as double) AS ROAQ#1204]
+                                          :                             +- Relation [CERT#1183L,qidx#1184,ASSET#1185L,DEP#1186,EQ#1187,LNLSGR#1188,LNATRES#1189,NCLNLS#1190,BRO#1191,CHBAL#1192,SC#1193,ROAQ#1194] parquet
+                                          +- ResolvedHint (strategy=broadcast)
+                                             +- Aggregate [qidx#1235], [qidx#1235, percentile(eq_assets#1256, cast(0.5 as double), 1, 0, 0, false) AS eq_assets_med_q#1314, percentile(npl_loans#1257, cast(0.5 as double), 1, 0, 0, false) AS npl_loans_med_q#1315]
+                                                +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, asset_yoy#1298, ... 7 more fields]
+                                                   +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, asset_yoy#1298, ... 10 more fields]
+                                                      +- Window [avg(ROAQ#1255) windowspecdefinition(CERT#1234L, qidx#1235 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1311, stddev_samp(ROAQ#1255) windowspecdefinition(CERT#1234L, qidx#1235 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1312, count(ROAQ#1255) windowspecdefinition(CERT#1234L, qidx#1235 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1313L], [CERT#1234L], [qidx#1235 ASC NULLS FIRST]
+                                                         +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, asset_yoy#1298, ... 4 more fields]
+                                                            +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, CASE WHEN (ASSET_l4#1293 > cast(0 as double)) THEN ((ASSET#1246 / ASSET_l4#1293) - cast(1 as double)) END AS asset_yoy#1298, ... 4 more fields]
+                                                               +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297]
+                                                                  +- Join LeftOuter, ((CERT#1234L = CERT#1263L) AND (qidx#1235 = qidx#1292))
+                                                                     :- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN (EQ#1248 / ASSET#1246) END AS eq_assets#1256, CASE WHEN (LNLSGR#1249 > cast(0 as double)) THEN (NCLNLS#1251 / LNLSGR#1249) END AS npl_loans#1257, CASE WHEN (LNLSGR#1249 > cast(0 as double)) THEN (LNATRES#1250 / LNLSGR#1249) END AS reserves_loans#1258, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN (LNLSGR#1249 / ASSET#1246) END AS loans_assets#1259, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN ((CHBAL#1253 + SC#1254) / ASSET#1246) END AS liquid_assets#1260, CASE WHEN (DEP#1247 > cast(0 as double)) THEN (BRO#1252 / DEP#1247) END AS bro_dep#1261, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN ln(ASSET#1246) END AS log_asset#1262]
+                                                                     :  +- Project [CERT#1234L, qidx#1235, cast(ASSET#1236L as double) AS ASSET#1246, cast(DEP#1237 as double) AS DEP#1247, cast(EQ#1238 as double) AS EQ#1248, cast(LNLSGR#1239 as double) AS LNLSGR#1249, cast(LNATRES#1240 as double) AS LNATRES#1250, cast(NCLNLS#1241 as double) AS NCLNLS#1251, cast(BRO#1242 as double) AS BRO#1252, cast(CHBAL#1243 as double) AS CHBAL#1253, cast(SC#1244 as double) AS SC#1254, cast(ROAQ#1245 as double) AS ROAQ#1255]
+                                                                     :     +- Relation [CERT#1234L,qidx#1235,ASSET#1236L,DEP#1237,EQ#1238,LNLSGR#1239,LNATRES#1240,NCLNLS#1241,BRO#1242,CHBAL#1243,SC#1244,ROAQ#1245] parquet
+                                                                     +- Project [CERT#1263L, (qidx#1264 + 4) AS qidx#1292, ASSET#1275 AS ASSET_l4#1293, LNLSGR#1278 AS LNLSGR_l4#1294, DEP#1276 AS DEP_l4#1295, eq_assets#1285 AS eq_assets_l4#1296, npl_loans#1286 AS npl_loans_l4#1297]
+                                                                        +- Project [CERT#1263L, qidx#1264, ASSET#1275, DEP#1276, EQ#1277, LNLSGR#1278, LNATRES#1279, NCLNLS#1280, BRO#1281, CHBAL#1282, SC#1283, ROAQ#1284, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN (EQ#1277 / ASSET#1275) END AS eq_assets#1285, CASE WHEN (LNLSGR#1278 > cast(0 as double)) THEN (NCLNLS#1280 / LNLSGR#1278) END AS npl_loans#1286, CASE WHEN (LNLSGR#1278 > cast(0 as double)) THEN (LNATRES#1279 / LNLSGR#1278) END AS reserves_loans#1287, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN (LNLSGR#1278 / ASSET#1275) END AS loans_assets#1288, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN ((CHBAL#1282 + SC#1283) / ASSET#1275) END AS liquid_assets#1289, CASE WHEN (DEP#1276 > cast(0 as double)) THEN (BRO#1281 / DEP#1276) END AS bro_dep#1290, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN ln(ASSET#1275) END AS log_asset#1291]
+                                                                           +- Project [CERT#1263L, qidx#1264, cast(ASSET#1265L as double) AS ASSET#1275, cast(DEP#1266 as double) AS DEP#1276, cast(EQ#1267 as double) AS EQ#1277, cast(LNLSGR#1268 as double) AS LNLSGR#1278, cast(LNATRES#1269 as double) AS LNATRES#1279, cast(NCLNLS#1270 as double) AS NCLNLS#1280, cast(BRO#1271 as double) AS BRO#1281, cast(CHBAL#1272 as double) AS CHBAL#1282, cast(SC#1273 as double) AS SC#1283, cast(ROAQ#1274 as double) AS ROAQ#1284]
+                                                                              +- Relation [CERT#1263L,qidx#1264,ASSET#1265L,DEP#1266,EQ#1267,LNLSGR#1268,LNATRES#1269,NCLNLS#1270,BRO#1271,CHBAL#1272,SC#1273,ROAQ#1274] parquet
+
+== Analyzed Logical Plan ==
+CERT: bigint, qidx: int, eq_assets: double, npl_loans: double, reserves_loans: double, loans_assets: double, liquid_assets: double, bro_dep: double, log_asset: double, asset_yoy: double, loans_yoy: double, dep_yoy: double, d_eq_assets_4q: double, d_npl_loans_4q: double, roa_q_mean4: double, roa_q_std4: double, roa_q_n4: bigint, eq_assets_med_q: double, npl_loans_med_q: double, eq_assets_pct_q: double
+Sort [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], true
++- Project [CERT#0L, qidx#1, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L, eq_assets_med_q#1022, npl_loans_med_q#1023, eq_assets_pct_q#1153]
+   +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 10 more fields]
+      +- Join LeftOuter, ((CERT#0L = CERT#1154L) AND (qidx#1 = qidx#1155))
+         :- Project [qidx#1, CERT#0L, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 9 more fields]
+         :  +- Join LeftOuter, (qidx#1 = qidx#1059)
+         :     :- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 7 more fields]
+         :     :  +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 10 more fields]
+         :     :     +- Window [avg(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1008, stddev_samp(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1009, count(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1010L], [CERT#0L], [qidx#1 ASC NULLS FIRST]
+         :     :        +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, asset_yoy#1003, ... 4 more fields]
+         :     :           +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972, CASE WHEN (ASSET_l4#968 > cast(0 as double)) THEN ((ASSET#950 / ASSET_l4#968) - cast(1 as double)) END AS asset_yoy#1003, ... 4 more fields]
+         :     :              +- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, ASSET_l4#968, LNLSGR_l4#969, DEP_l4#970, eq_assets_l4#971, npl_loans_l4#972]
+         :     :                 +- Join LeftOuter, ((CERT#0L = CERT#973L) AND (qidx#1 = qidx#967))
+         :     :                    :- Project [CERT#0L, qidx#1, ASSET#950, DEP#951, EQ#952, LNLSGR#953, LNATRES#954, NCLNLS#955, BRO#956, CHBAL#957, SC#958, ROAQ#959, CASE WHEN (ASSET#950 > cast(0 as double)) THEN (EQ#952 / ASSET#950) END AS eq_assets#960, CASE WHEN (LNLSGR#953 > cast(0 as double)) THEN (NCLNLS#955 / LNLSGR#953) END AS npl_loans#961, CASE WHEN (LNLSGR#953 > cast(0 as double)) THEN (LNATRES#954 / LNLSGR#953) END AS reserves_loans#962, CASE WHEN (ASSET#950 > cast(0 as double)) THEN (LNLSGR#953 / ASSET#950) END AS loans_assets#963, CASE WHEN (ASSET#950 > cast(0 as double)) THEN ((CHBAL#957 + SC#958) / ASSET#950) END AS liquid_assets#964, CASE WHEN (DEP#951 > cast(0 as double)) THEN (BRO#956 / DEP#951) END AS bro_dep#965, CASE WHEN (ASSET#950 > cast(0 as double)) THEN ln(ASSET#950) END AS log_asset#966]
+         :     :                    :  +- Project [CERT#0L, qidx#1, cast(ASSET#2L as double) AS ASSET#950, cast(DEP#3 as double) AS DEP#951, cast(EQ#4 as double) AS EQ#952, cast(LNLSGR#5 as double) AS LNLSGR#953, cast(LNATRES#6 as double) AS LNATRES#954, cast(NCLNLS#7 as double) AS NCLNLS#955, cast(BRO#8 as double) AS BRO#956, cast(CHBAL#9 as double) AS CHBAL#957, cast(SC#10 as double) AS SC#958, cast(ROAQ#11 as double) AS ROAQ#959]
+         :     :                    :     +- Relation [CERT#0L,qidx#1,ASSET#2L,DEP#3,EQ#4,LNLSGR#5,LNATRES#6,NCLNLS#7,BRO#8,CHBAL#9,SC#10,ROAQ#11] parquet
+         :     :                    +- Project [CERT#973L, (qidx#974 + 4) AS qidx#967, ASSET#985 AS ASSET_l4#968, LNLSGR#988 AS LNLSGR_l4#969, DEP#986 AS DEP_l4#970, eq_assets#995 AS eq_assets_l4#971, npl_loans#996 AS npl_loans_l4#972]
+         :     :                       +- Project [CERT#973L, qidx#974, ASSET#985, DEP#986, EQ#987, LNLSGR#988, LNATRES#989, NCLNLS#990, BRO#991, CHBAL#992, SC#993, ROAQ#994, CASE WHEN (ASSET#985 > cast(0 as double)) THEN (EQ#987 / ASSET#985) END AS eq_assets#995, CASE WHEN (LNLSGR#988 > cast(0 as double)) THEN (NCLNLS#990 / LNLSGR#988) END AS npl_loans#996, CASE WHEN (LNLSGR#988 > cast(0 as double)) THEN (LNATRES#989 / LNLSGR#988) END AS reserves_loans#997, CASE WHEN (ASSET#985 > cast(0 as double)) THEN (LNLSGR#988 / ASSET#985) END AS loans_assets#998, CASE WHEN (ASSET#985 > cast(0 as double)) THEN ((CHBAL#992 + SC#993) / ASSET#985) END AS liquid_assets#999, CASE WHEN (DEP#986 > cast(0 as double)) THEN (BRO#991 / DEP#986) END AS bro_dep#1000, CASE WHEN (ASSET#985 > cast(0 as double)) THEN ln(ASSET#985) END AS log_asset#1001]
+         :     :                          +- Project [CERT#973L, qidx#974, cast(ASSET#975L as double) AS ASSET#985, cast(DEP#976 as double) AS DEP#986, cast(EQ#977 as double) AS EQ#987, cast(LNLSGR#978 as double) AS LNLSGR#988, cast(LNATRES#979 as double) AS LNATRES#989, cast(NCLNLS#980 as double) AS NCLNLS#990, cast(BRO#981 as double) AS BRO#991, cast(CHBAL#982 as double) AS CHBAL#992, cast(SC#983 as double) AS SC#993, cast(ROAQ#984 as double) AS ROAQ#994]
+         :     :                             +- Relation [CERT#973L,qidx#974,ASSET#975L,DEP#976,EQ#977,LNLSGR#978,LNATRES#979,NCLNLS#980,BRO#981,CHBAL#982,SC#983,ROAQ#984] parquet
+         :     +- ResolvedHint (strategy=broadcast)
+         :        +- Aggregate [qidx#1059], [qidx#1059, percentile(eq_assets#1080, cast(0.5 as double), 1, 0, 0, false) AS eq_assets_med_q#1022, percentile(npl_loans#1081, cast(0.5 as double), 1, 0, 0, false) AS npl_loans_med_q#1023]
+         :           +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, asset_yoy#1122, ... 7 more fields]
+         :              +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, asset_yoy#1122, ... 10 more fields]
+         :                 +- Window [avg(ROAQ#1079) windowspecdefinition(CERT#1058L, qidx#1059 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1135, stddev_samp(ROAQ#1079) windowspecdefinition(CERT#1058L, qidx#1059 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1136, count(ROAQ#1079) windowspecdefinition(CERT#1058L, qidx#1059 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1137L], [CERT#1058L], [qidx#1059 ASC NULLS FIRST]
+         :                    +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, asset_yoy#1122, ... 4 more fields]
+         :                       +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121, CASE WHEN (ASSET_l4#1117 > cast(0 as double)) THEN ((ASSET#1070 / ASSET_l4#1117) - cast(1 as double)) END AS asset_yoy#1122, ... 4 more fields]
+         :                          +- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, eq_assets#1080, npl_loans#1081, reserves_loans#1082, loans_assets#1083, liquid_assets#1084, bro_dep#1085, log_asset#1086, ASSET_l4#1117, LNLSGR_l4#1118, DEP_l4#1119, eq_assets_l4#1120, npl_loans_l4#1121]
+         :                             +- Join LeftOuter, ((CERT#1058L = CERT#1087L) AND (qidx#1059 = qidx#1116))
+         :                                :- Project [CERT#1058L, qidx#1059, ASSET#1070, DEP#1071, EQ#1072, LNLSGR#1073, LNATRES#1074, NCLNLS#1075, BRO#1076, CHBAL#1077, SC#1078, ROAQ#1079, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN (EQ#1072 / ASSET#1070) END AS eq_assets#1080, CASE WHEN (LNLSGR#1073 > cast(0 as double)) THEN (NCLNLS#1075 / LNLSGR#1073) END AS npl_loans#1081, CASE WHEN (LNLSGR#1073 > cast(0 as double)) THEN (LNATRES#1074 / LNLSGR#1073) END AS reserves_loans#1082, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN (LNLSGR#1073 / ASSET#1070) END AS loans_assets#1083, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN ((CHBAL#1077 + SC#1078) / ASSET#1070) END AS liquid_assets#1084, CASE WHEN (DEP#1071 > cast(0 as double)) THEN (BRO#1076 / DEP#1071) END AS bro_dep#1085, CASE WHEN (ASSET#1070 > cast(0 as double)) THEN ln(ASSET#1070) END AS log_asset#1086]
+         :                                :  +- Project [CERT#1058L, qidx#1059, cast(ASSET#1060L as double) AS ASSET#1070, cast(DEP#1061 as double) AS DEP#1071, cast(EQ#1062 as double) AS EQ#1072, cast(LNLSGR#1063 as double) AS LNLSGR#1073, cast(LNATRES#1064 as double) AS LNATRES#1074, cast(NCLNLS#1065 as double) AS NCLNLS#1075, cast(BRO#1066 as double) AS BRO#1076, cast(CHBAL#1067 as double) AS CHBAL#1077, cast(SC#1068 as double) AS SC#1078, cast(ROAQ#1069 as double) AS ROAQ#1079]
+         :                                :     +- Relation [CERT#1058L,qidx#1059,ASSET#1060L,DEP#1061,EQ#1062,LNLSGR#1063,LNATRES#1064,NCLNLS#1065,BRO#1066,CHBAL#1067,SC#1068,ROAQ#1069] parquet
+         :                                +- Project [CERT#1087L, (qidx#1088 + 4) AS qidx#1116, ASSET#1099 AS ASSET_l4#1117, LNLSGR#1102 AS LNLSGR_l4#1118, DEP#1100 AS DEP_l4#1119, eq_assets#1109 AS eq_assets_l4#1120, npl_loans#1110 AS npl_loans_l4#1121]
+         :                                   +- Project [CERT#1087L, qidx#1088, ASSET#1099, DEP#1100, EQ#1101, LNLSGR#1102, LNATRES#1103, NCLNLS#1104, BRO#1105, CHBAL#1106, SC#1107, ROAQ#1108, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN (EQ#1101 / ASSET#1099) END AS eq_assets#1109, CASE WHEN (LNLSGR#1102 > cast(0 as double)) THEN (NCLNLS#1104 / LNLSGR#1102) END AS npl_loans#1110, CASE WHEN (LNLSGR#1102 > cast(0 as double)) THEN (LNATRES#1103 / LNLSGR#1102) END AS reserves_loans#1111, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN (LNLSGR#1102 / ASSET#1099) END AS loans_assets#1112, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN ((CHBAL#1106 + SC#1107) / ASSET#1099) END AS liquid_assets#1113, CASE WHEN (DEP#1100 > cast(0 as double)) THEN (BRO#1105 / DEP#1100) END AS bro_dep#1114, CASE WHEN (ASSET#1099 > cast(0 as double)) THEN ln(ASSET#1099) END AS log_asset#1115]
+         :                                      +- Project [CERT#1087L, qidx#1088, cast(ASSET#1089L as double) AS ASSET#1099, cast(DEP#1090 as double) AS DEP#1100, cast(EQ#1091 as double) AS EQ#1101, cast(LNLSGR#1092 as double) AS LNLSGR#1102, cast(LNATRES#1093 as double) AS LNATRES#1103, cast(NCLNLS#1094 as double) AS NCLNLS#1104, cast(BRO#1095 as double) AS BRO#1105, cast(CHBAL#1096 as double) AS CHBAL#1106, cast(SC#1097 as double) AS SC#1107, cast(ROAQ#1098 as double) AS ROAQ#1108]
+         :                                         +- Relation [CERT#1087L,qidx#1088,ASSET#1089L,DEP#1090,EQ#1091,LNLSGR#1092,LNATRES#1093,NCLNLS#1094,BRO#1095,CHBAL#1096,SC#1097,ROAQ#1098] parquet
+         +- Project [CERT#1154L, qidx#1155, ((cast(rk_min#1140 as double) + (cast((ties#1141L - cast(1 as bigint)) as double) / cast(2.0 as double))) / cast(n#1142L as double)) AS eq_assets_pct_q#1153]
+            +- Project [CERT#1154L, qidx#1155, rk_min#1140, ties#1141L, n#1142L]
+               +- Project [CERT#1154L, qidx#1155, eq_assets#1176, rk_min#1140, ties#1141L, n#1142L, rk_min#1140, ties#1141L, n#1142L]
+                  +- Window [count(1) windowspecdefinition(qidx#1155, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS n#1142L], [qidx#1155]
+                     +- Window [count(1) windowspecdefinition(qidx#1155, eq_assets#1176, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS ties#1141L], [qidx#1155, eq_assets#1176]
+                        +- Window [rank(eq_assets#1176) windowspecdefinition(qidx#1155, eq_assets#1176 ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rk_min#1140], [qidx#1155], [eq_assets#1176 ASC NULLS FIRST]
+                           +- Project [CERT#1154L, qidx#1155, eq_assets#1176]
+                              +- Project [CERT#1154L, qidx#1155, eq_assets#1176]
+                                 +- Filter isnotnull(eq_assets#1176)
+                                    +- Project [qidx#1155, CERT#1154L, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 9 more fields]
+                                       +- Join LeftOuter, (qidx#1155 = qidx#1235)
+                                          :- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 7 more fields]
+                                          :  +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 10 more fields]
+                                          :     +- Window [avg(ROAQ#1175) windowspecdefinition(CERT#1154L, qidx#1155 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1231, stddev_samp(ROAQ#1175) windowspecdefinition(CERT#1154L, qidx#1155 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1232, count(ROAQ#1175) windowspecdefinition(CERT#1154L, qidx#1155 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1233L], [CERT#1154L], [qidx#1155 ASC NULLS FIRST]
+                                          :        +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, asset_yoy#1218, ... 4 more fields]
+                                          :           +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217, CASE WHEN (ASSET_l4#1213 > cast(0 as double)) THEN ((ASSET#1166 / ASSET_l4#1213) - cast(1 as double)) END AS asset_yoy#1218, ... 4 more fields]
+                                          :              +- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, eq_assets#1176, npl_loans#1177, reserves_loans#1178, loans_assets#1179, liquid_assets#1180, bro_dep#1181, log_asset#1182, ASSET_l4#1213, LNLSGR_l4#1214, DEP_l4#1215, eq_assets_l4#1216, npl_loans_l4#1217]
+                                          :                 +- Join LeftOuter, ((CERT#1154L = CERT#1183L) AND (qidx#1155 = qidx#1212))
+                                          :                    :- Project [CERT#1154L, qidx#1155, ASSET#1166, DEP#1167, EQ#1168, LNLSGR#1169, LNATRES#1170, NCLNLS#1171, BRO#1172, CHBAL#1173, SC#1174, ROAQ#1175, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN (EQ#1168 / ASSET#1166) END AS eq_assets#1176, CASE WHEN (LNLSGR#1169 > cast(0 as double)) THEN (NCLNLS#1171 / LNLSGR#1169) END AS npl_loans#1177, CASE WHEN (LNLSGR#1169 > cast(0 as double)) THEN (LNATRES#1170 / LNLSGR#1169) END AS reserves_loans#1178, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN (LNLSGR#1169 / ASSET#1166) END AS loans_assets#1179, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN ((CHBAL#1173 + SC#1174) / ASSET#1166) END AS liquid_assets#1180, CASE WHEN (DEP#1167 > cast(0 as double)) THEN (BRO#1172 / DEP#1167) END AS bro_dep#1181, CASE WHEN (ASSET#1166 > cast(0 as double)) THEN ln(ASSET#1166) END AS log_asset#1182]
+                                          :                    :  +- Project [CERT#1154L, qidx#1155, cast(ASSET#1156L as double) AS ASSET#1166, cast(DEP#1157 as double) AS DEP#1167, cast(EQ#1158 as double) AS EQ#1168, cast(LNLSGR#1159 as double) AS LNLSGR#1169, cast(LNATRES#1160 as double) AS LNATRES#1170, cast(NCLNLS#1161 as double) AS NCLNLS#1171, cast(BRO#1162 as double) AS BRO#1172, cast(CHBAL#1163 as double) AS CHBAL#1173, cast(SC#1164 as double) AS SC#1174, cast(ROAQ#1165 as double) AS ROAQ#1175]
+                                          :                    :     +- Relation [CERT#1154L,qidx#1155,ASSET#1156L,DEP#1157,EQ#1158,LNLSGR#1159,LNATRES#1160,NCLNLS#1161,BRO#1162,CHBAL#1163,SC#1164,ROAQ#1165] parquet
+                                          :                    +- Project [CERT#1183L, (qidx#1184 + 4) AS qidx#1212, ASSET#1195 AS ASSET_l4#1213, LNLSGR#1198 AS LNLSGR_l4#1214, DEP#1196 AS DEP_l4#1215, eq_assets#1205 AS eq_assets_l4#1216, npl_loans#1206 AS npl_loans_l4#1217]
+                                          :                       +- Project [CERT#1183L, qidx#1184, ASSET#1195, DEP#1196, EQ#1197, LNLSGR#1198, LNATRES#1199, NCLNLS#1200, BRO#1201, CHBAL#1202, SC#1203, ROAQ#1204, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN (EQ#1197 / ASSET#1195) END AS eq_assets#1205, CASE WHEN (LNLSGR#1198 > cast(0 as double)) THEN (NCLNLS#1200 / LNLSGR#1198) END AS npl_loans#1206, CASE WHEN (LNLSGR#1198 > cast(0 as double)) THEN (LNATRES#1199 / LNLSGR#1198) END AS reserves_loans#1207, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN (LNLSGR#1198 / ASSET#1195) END AS loans_assets#1208, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN ((CHBAL#1202 + SC#1203) / ASSET#1195) END AS liquid_assets#1209, CASE WHEN (DEP#1196 > cast(0 as double)) THEN (BRO#1201 / DEP#1196) END AS bro_dep#1210, CASE WHEN (ASSET#1195 > cast(0 as double)) THEN ln(ASSET#1195) END AS log_asset#1211]
+                                          :                          +- Project [CERT#1183L, qidx#1184, cast(ASSET#1185L as double) AS ASSET#1195, cast(DEP#1186 as double) AS DEP#1196, cast(EQ#1187 as double) AS EQ#1197, cast(LNLSGR#1188 as double) AS LNLSGR#1198, cast(LNATRES#1189 as double) AS LNATRES#1199, cast(NCLNLS#1190 as double) AS NCLNLS#1200, cast(BRO#1191 as double) AS BRO#1201, cast(CHBAL#1192 as double) AS CHBAL#1202, cast(SC#1193 as double) AS SC#1203, cast(ROAQ#1194 as double) AS ROAQ#1204]
+                                          :                             +- Relation [CERT#1183L,qidx#1184,ASSET#1185L,DEP#1186,EQ#1187,LNLSGR#1188,LNATRES#1189,NCLNLS#1190,BRO#1191,CHBAL#1192,SC#1193,ROAQ#1194] parquet
+                                          +- ResolvedHint (strategy=broadcast)
+                                             +- Aggregate [qidx#1235], [qidx#1235, percentile(eq_assets#1256, cast(0.5 as double), 1, 0, 0, false) AS eq_assets_med_q#1314, percentile(npl_loans#1257, cast(0.5 as double), 1, 0, 0, false) AS npl_loans_med_q#1315]
+                                                +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, asset_yoy#1298, ... 7 more fields]
+                                                   +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, asset_yoy#1298, ... 10 more fields]
+                                                      +- Window [avg(ROAQ#1255) windowspecdefinition(CERT#1234L, qidx#1235 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_mean4#1311, stddev_samp(ROAQ#1255) windowspecdefinition(CERT#1234L, qidx#1235 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_std4#1312, count(ROAQ#1255) windowspecdefinition(CERT#1234L, qidx#1235 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, cast(-3 as int), currentrow$())) AS roa_q_n4#1313L], [CERT#1234L], [qidx#1235 ASC NULLS FIRST]
+                                                         +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, asset_yoy#1298, ... 4 more fields]
+                                                            +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297, CASE WHEN (ASSET_l4#1293 > cast(0 as double)) THEN ((ASSET#1246 / ASSET_l4#1293) - cast(1 as double)) END AS asset_yoy#1298, ... 4 more fields]
+                                                               +- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, eq_assets#1256, npl_loans#1257, reserves_loans#1258, loans_assets#1259, liquid_assets#1260, bro_dep#1261, log_asset#1262, ASSET_l4#1293, LNLSGR_l4#1294, DEP_l4#1295, eq_assets_l4#1296, npl_loans_l4#1297]
+                                                                  +- Join LeftOuter, ((CERT#1234L = CERT#1263L) AND (qidx#1235 = qidx#1292))
+                                                                     :- Project [CERT#1234L, qidx#1235, ASSET#1246, DEP#1247, EQ#1248, LNLSGR#1249, LNATRES#1250, NCLNLS#1251, BRO#1252, CHBAL#1253, SC#1254, ROAQ#1255, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN (EQ#1248 / ASSET#1246) END AS eq_assets#1256, CASE WHEN (LNLSGR#1249 > cast(0 as double)) THEN (NCLNLS#1251 / LNLSGR#1249) END AS npl_loans#1257, CASE WHEN (LNLSGR#1249 > cast(0 as double)) THEN (LNATRES#1250 / LNLSGR#1249) END AS reserves_loans#1258, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN (LNLSGR#1249 / ASSET#1246) END AS loans_assets#1259, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN ((CHBAL#1253 + SC#1254) / ASSET#1246) END AS liquid_assets#1260, CASE WHEN (DEP#1247 > cast(0 as double)) THEN (BRO#1252 / DEP#1247) END AS bro_dep#1261, CASE WHEN (ASSET#1246 > cast(0 as double)) THEN ln(ASSET#1246) END AS log_asset#1262]
+                                                                     :  +- Project [CERT#1234L, qidx#1235, cast(ASSET#1236L as double) AS ASSET#1246, cast(DEP#1237 as double) AS DEP#1247, cast(EQ#1238 as double) AS EQ#1248, cast(LNLSGR#1239 as double) AS LNLSGR#1249, cast(LNATRES#1240 as double) AS LNATRES#1250, cast(NCLNLS#1241 as double) AS NCLNLS#1251, cast(BRO#1242 as double) AS BRO#1252, cast(CHBAL#1243 as double) AS CHBAL#1253, cast(SC#1244 as double) AS SC#1254, cast(ROAQ#1245 as double) AS ROAQ#1255]
+                                                                     :     +- Relation [CERT#1234L,qidx#1235,ASSET#1236L,DEP#1237,EQ#1238,LNLSGR#1239,LNATRES#1240,NCLNLS#1241,BRO#1242,CHBAL#1243,SC#1244,ROAQ#1245] parquet
+                                                                     +- Project [CERT#1263L, (qidx#1264 + 4) AS qidx#1292, ASSET#1275 AS ASSET_l4#1293, LNLSGR#1278 AS LNLSGR_l4#1294, DEP#1276 AS DEP_l4#1295, eq_assets#1285 AS eq_assets_l4#1296, npl_loans#1286 AS npl_loans_l4#1297]
+                                                                        +- Project [CERT#1263L, qidx#1264, ASSET#1275, DEP#1276, EQ#1277, LNLSGR#1278, LNATRES#1279, NCLNLS#1280, BRO#1281, CHBAL#1282, SC#1283, ROAQ#1284, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN (EQ#1277 / ASSET#1275) END AS eq_assets#1285, CASE WHEN (LNLSGR#1278 > cast(0 as double)) THEN (NCLNLS#1280 / LNLSGR#1278) END AS npl_loans#1286, CASE WHEN (LNLSGR#1278 > cast(0 as double)) THEN (LNATRES#1279 / LNLSGR#1278) END AS reserves_loans#1287, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN (LNLSGR#1278 / ASSET#1275) END AS loans_assets#1288, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN ((CHBAL#1282 + SC#1283) / ASSET#1275) END AS liquid_assets#1289, CASE WHEN (DEP#1276 > cast(0 as double)) THEN (BRO#1281 / DEP#1276) END AS bro_dep#1290, CASE WHEN (ASSET#1275 > cast(0 as double)) THEN ln(ASSET#1275) END AS log_asset#1291]
+                                                                           +- Project [CERT#1263L, qidx#1264, cast(ASSET#1265L as double) AS ASSET#1275, cast(DEP#1266 as double) AS DEP#1276, cast(EQ#1267 as double) AS EQ#1277, cast(LNLSGR#1268 as double) AS LNLSGR#1278, cast(LNATRES#1269 as double) AS LNATRES#1279, cast(NCLNLS#1270 as double) AS NCLNLS#1280, cast(BRO#1271 as double) AS BRO#1281, cast(CHBAL#1272 as double) AS CHBAL#1282, cast(SC#1273 as double) AS SC#1283, cast(ROAQ#1274 as double) AS ROAQ#1284]
+                                                                              +- Relation [CERT#1263L,qidx#1264,ASSET#1265L,DEP#1266,EQ#1267,LNLSGR#1268,LNATRES#1269,NCLNLS#1270,BRO#1271,CHBAL#1272,SC#1273,ROAQ#1274] parquet
+
+== Optimized Logical Plan ==
+Sort [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], true
++- Project [CERT#0L, qidx#1, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L, eq_assets_med_q#1022, npl_loans_med_q#1023, eq_assets_pct_q#1153]
+   +- Join LeftOuter, ((CERT#0L = CERT#1154L) AND (qidx#1 = qidx#1155))
+      :- Project [qidx#1, CERT#0L, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L, eq_assets_med_q#1022, npl_loans_med_q#1023]
+      :  +- Join LeftOuter, (qidx#1 = qidx#1059), rightHint=(strategy=broadcast)
+      :     :- Project [CERT#0L, qidx#1, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L]
+      :     :  +- Window [avg(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_mean4#1008, stddev_samp(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_std4#1009, count(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_n4#1010L], [CERT#0L], [qidx#1 ASC NULLS FIRST]
+      :     :     +- Project [CERT#0L, qidx#1, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, CASE WHEN (ASSET_l4#968 > 0.0) THEN ((ASSET#950 / ASSET_l4#968) - 1.0) END AS asset_yoy#1003, CASE WHEN (LNLSGR_l4#969 > 0.0) THEN ((LNLSGR#5 / LNLSGR_l4#969) - 1.0) END AS loans_yoy#1004, CASE WHEN (DEP_l4#970 > 0.0) THEN ((DEP#3 / DEP_l4#970) - 1.0) END AS dep_yoy#1005, (eq_assets#960 - eq_assets_l4#971) AS d_eq_assets_4q#1006, (npl_loans#961 - npl_loans_l4#972) AS d_npl_loans_4q#1007]
+      :     :        +- Join LeftOuter, ((CERT#0L = CERT#973L) AND (qidx#1 = qidx#967))
+      :     :           :- Project [CERT#0L, qidx#1, ASSET#950, DEP#3, LNLSGR#5, ROAQ#959, CASE WHEN (ASSET#950 > 0.0) THEN (EQ#4 / ASSET#950) END AS eq_assets#960, CASE WHEN (LNLSGR#5 > 0.0) THEN (NCLNLS#7 / LNLSGR#5) END AS npl_loans#961, CASE WHEN (LNLSGR#5 > 0.0) THEN (LNATRES#6 / LNLSGR#5) END AS reserves_loans#962, CASE WHEN (ASSET#950 > 0.0) THEN (LNLSGR#5 / ASSET#950) END AS loans_assets#963, CASE WHEN (ASSET#950 > 0.0) THEN ((CHBAL#9 + SC#10) / ASSET#950) END AS liquid_assets#964, CASE WHEN (DEP#3 > 0.0) THEN (BRO#8 / DEP#3) END AS bro_dep#965, CASE WHEN (ASSET#950 > 0.0) THEN ln(ASSET#950) END AS log_asset#966]
+      :     :           :  +- Project [CERT#0L, qidx#1, cast(ASSET#2L as double) AS ASSET#950, DEP#3, EQ#4, LNLSGR#5, LNATRES#6, NCLNLS#7, BRO#8, CHBAL#9, SC#10, cast(ROAQ#11 as double) AS ROAQ#959]
+      :     :           :     +- Relation [CERT#0L,qidx#1,ASSET#2L,DEP#3,EQ#4,LNLSGR#5,LNATRES#6,NCLNLS#7,BRO#8,CHBAL#9,SC#10,ROAQ#11] parquet
+      :     :           +- Project [CERT#973L, (qidx#974 + 4) AS qidx#967, ASSET#985 AS ASSET_l4#968, LNLSGR#978 AS LNLSGR_l4#969, DEP#976 AS DEP_l4#970, CASE WHEN (ASSET#985 > 0.0) THEN (EQ#977 / ASSET#985) END AS eq_assets_l4#971, CASE WHEN (LNLSGR#978 > 0.0) THEN (NCLNLS#980 / LNLSGR#978) END AS npl_loans_l4#972]
+      :     :              +- Project [CERT#973L, qidx#974, cast(ASSET#975L as double) AS ASSET#985, DEP#976, EQ#977, LNLSGR#978, NCLNLS#980]
+      :     :                 +- Filter (isnotnull(CERT#973L) AND isnotnull((qidx#974 + 4)))
+      :     :                    +- Relation [CERT#973L,qidx#974,ASSET#975L,DEP#976,EQ#977,LNLSGR#978,LNATRES#979,NCLNLS#980,BRO#981,CHBAL#982,SC#983,ROAQ#984] parquet
+      :     +- Aggregate [qidx#1059], [qidx#1059, percentile(eq_assets#1080, 0.5, 1, 0, 0, false) AS eq_assets_med_q#1022, percentile(npl_loans#1081, 0.5, 1, 0, 0, false) AS npl_loans_med_q#1023]
+      :        +- Project [qidx#1059, eq_assets#1080, npl_loans#1081]
+      :           +- Join LeftOuter, ((CERT#1058L = CERT#1087L) AND (qidx#1059 = qidx#1116))
+      :              :- Project [CERT#1058L, qidx#1059, CASE WHEN (ASSET#1070 > 0.0) THEN (EQ#1062 / ASSET#1070) END AS eq_assets#1080, CASE WHEN (LNLSGR#1063 > 0.0) THEN (NCLNLS#1065 / LNLSGR#1063) END AS npl_loans#1081]
+      :              :  +- Project [CERT#1058L, qidx#1059, cast(ASSET#1060L as double) AS ASSET#1070, EQ#1062, LNLSGR#1063, NCLNLS#1065]
+      :              :     +- Filter isnotnull(qidx#1059)
+      :              :        +- Relation [CERT#1058L,qidx#1059,ASSET#1060L,DEP#1061,EQ#1062,LNLSGR#1063,LNATRES#1064,NCLNLS#1065,BRO#1066,CHBAL#1067,SC#1068,ROAQ#1069] parquet
+      :              +- Project [CERT#1087L, (qidx#1088 + 4) AS qidx#1116]
+      :                 +- Filter (isnotnull(CERT#1087L) AND isnotnull((qidx#1088 + 4)))
+      :                    +- Relation [CERT#1087L,qidx#1088,ASSET#1089L,DEP#1090,EQ#1091,LNLSGR#1092,LNATRES#1093,NCLNLS#1094,BRO#1095,CHBAL#1096,SC#1097,ROAQ#1098] parquet
+      +- Project [CERT#1154L, qidx#1155, ((cast(rk_min#1140 as double) + (cast((ties#1141L - 1) as double) / 2.0)) / cast(n#1142L as double)) AS eq_assets_pct_q#1153]
+         +- Filter isnotnull(CERT#1154L)
+            +- Window [count(1) windowspecdefinition(qidx#1155, eq_assets#1176, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS ties#1141L], [qidx#1155, knownfloatingpointnormalized(normalizenanandzero(eq_assets#1176))]
+               +- Window [count(1) windowspecdefinition(qidx#1155, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS n#1142L], [qidx#1155]
+                  +- Window [rank(eq_assets#1176) windowspecdefinition(qidx#1155, eq_assets#1176 ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rk_min#1140], [qidx#1155], [eq_assets#1176 ASC NULLS FIRST]
+                     +- Project [CERT#1154L, qidx#1155, eq_assets#1176]
+                        +- Join LeftOuter, ((CERT#1154L = CERT#1183L) AND (qidx#1155 = qidx#1212))
+                           :- Project [CERT#1154L, qidx#1155, CASE WHEN (ASSET#1166 > 0.0) THEN (EQ#1158 / ASSET#1166) END AS eq_assets#1176]
+                           :  +- Project [CERT#1154L, qidx#1155, cast(ASSET#1156L as double) AS ASSET#1166, EQ#1158]
+                           :     +- Filter (CASE WHEN (cast(ASSET#1156L as double) > 0.0) THEN isnotnull((EQ#1158 / cast(ASSET#1156L as double))) ELSE false END AND isnotnull(qidx#1155))
+                           :        +- Relation [CERT#1154L,qidx#1155,ASSET#1156L,DEP#1157,EQ#1158,LNLSGR#1159,LNATRES#1160,NCLNLS#1161,BRO#1162,CHBAL#1163,SC#1164,ROAQ#1165] parquet
+                           +- Project [CERT#1183L, (qidx#1184 + 4) AS qidx#1212]
+                              +- Filter (isnotnull(CERT#1183L) AND isnotnull((qidx#1184 + 4)))
+                                 +- Relation [CERT#1183L,qidx#1184,ASSET#1185L,DEP#1186,EQ#1187,LNLSGR#1188,LNATRES#1189,NCLNLS#1190,BRO#1191,CHBAL#1192,SC#1193,ROAQ#1194] parquet
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST, 16), ENSURE_REQUIREMENTS, [plan_id=2153]
+      +- Project [CERT#0L, qidx#1, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L, eq_assets_med_q#1022, npl_loans_med_q#1023, eq_assets_pct_q#1153]
+         +- SortMergeJoin [CERT#0L, qidx#1], [CERT#1154L, qidx#1155], LeftOuter
+            :- Sort [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], false, 0
+            :  +- Exchange hashpartitioning(CERT#0L, qidx#1, 16), ENSURE_REQUIREMENTS, [plan_id=2146]
+            :     +- Project [qidx#1, CERT#0L, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L, eq_assets_med_q#1022, npl_loans_med_q#1023]
+            :        +- BroadcastHashJoin [qidx#1], [qidx#1059], LeftOuter, BuildRight, false
+            :           :- Project [CERT#0L, qidx#1, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, asset_yoy#1003, loans_yoy#1004, dep_yoy#1005, d_eq_assets_4q#1006, d_npl_loans_4q#1007, roa_q_mean4#1008, roa_q_std4#1009, roa_q_n4#1010L]
+            :           :  +- Window [avg(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_mean4#1008, stddev_samp(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_std4#1009, count(ROAQ#959) windowspecdefinition(CERT#0L, qidx#1 ASC NULLS FIRST, specifiedwindowframe(RangeFrame, -3, currentrow$())) AS roa_q_n4#1010L], [CERT#0L], [qidx#1 ASC NULLS FIRST]
+            :           :     +- Sort [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], false, 0
+            :           :        +- Exchange hashpartitioning(CERT#0L, 16), ENSURE_REQUIREMENTS, [plan_id=2108]
+            :           :           +- Project [CERT#0L, qidx#1, ROAQ#959, eq_assets#960, npl_loans#961, reserves_loans#962, loans_assets#963, liquid_assets#964, bro_dep#965, log_asset#966, CASE WHEN (ASSET_l4#968 > 0.0) THEN ((ASSET#950 / ASSET_l4#968) - 1.0) END AS asset_yoy#1003, CASE WHEN (LNLSGR_l4#969 > 0.0) THEN ((LNLSGR#5 / LNLSGR_l4#969) - 1.0) END AS loans_yoy#1004, CASE WHEN (DEP_l4#970 > 0.0) THEN ((DEP#3 / DEP_l4#970) - 1.0) END AS dep_yoy#1005, (eq_assets#960 - eq_assets_l4#971) AS d_eq_assets_4q#1006, (npl_loans#961 - npl_loans_l4#972) AS d_npl_loans_4q#1007]
+            :           :              +- SortMergeJoin [CERT#0L, qidx#1], [CERT#973L, qidx#967], LeftOuter
+            :           :                 :- Sort [CERT#0L ASC NULLS FIRST, qidx#1 ASC NULLS FIRST], false, 0
+            :           :                 :  +- Exchange hashpartitioning(CERT#0L, qidx#1, 16), ENSURE_REQUIREMENTS, [plan_id=2101]
+            :           :                 :     +- Project [CERT#0L, qidx#1, ASSET#950, DEP#3, LNLSGR#5, ROAQ#959, CASE WHEN (ASSET#950 > 0.0) THEN (EQ#4 / ASSET#950) END AS eq_assets#960, CASE WHEN (LNLSGR#5 > 0.0) THEN (NCLNLS#7 / LNLSGR#5) END AS npl_loans#961, CASE WHEN (LNLSGR#5 > 0.0) THEN (LNATRES#6 / LNLSGR#5) END AS reserves_loans#962, CASE WHEN (ASSET#950 > 0.0) THEN (LNLSGR#5 / ASSET#950) END AS loans_assets#963, CASE WHEN (ASSET#950 > 0.0) THEN ((CHBAL#9 + SC#10) / ASSET#950) END AS liquid_assets#964, CASE WHEN (DEP#3 > 0.0) THEN (BRO#8 / DEP#3) END AS bro_dep#965, CASE WHEN (ASSET#950 > 0.0) THEN ln(ASSET#950) END AS log_asset#966]
+            :           :                 :        +- Project [CERT#0L, qidx#1, cast(ASSET#2L as double) AS ASSET#950, DEP#3, EQ#4, LNLSGR#5, LNATRES#6, NCLNLS#7, BRO#8, CHBAL#9, SC#10, cast(ROAQ#11 as double) AS ROAQ#959]
+            :           :                 :           +- FileScan parquet [CERT#0L,qidx#1,ASSET#2L,DEP#3,EQ#4,LNLSGR#5,LNATRES#6,NCLNLS#7,BRO#8,CHBAL#9,SC#10,ROAQ#11] Batched: true, DataFilters: [], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/content/spark_input.parquet], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,DEP:double,EQ:double,LNLSGR:double,LNATRES:double,NCLNLS...
+            :           :                 +- Sort [CERT#973L ASC NULLS FIRST, qidx#967 ASC NULLS FIRST], false, 0
+            :           :                    +- Exchange hashpartitioning(CERT#973L, qidx#967, 16), ENSURE_REQUIREMENTS, [plan_id=2102]
+            :           :                       +- Project [CERT#973L, (qidx#974 + 4) AS qidx#967, ASSET#985 AS ASSET_l4#968, LNLSGR#978 AS LNLSGR_l4#969, DEP#976 AS DEP_l4#970, CASE WHEN (ASSET#985 > 0.0) THEN (EQ#977 / ASSET#985) END AS eq_assets_l4#971, CASE WHEN (LNLSGR#978 > 0.0) THEN (NCLNLS#980 / LNLSGR#978) END AS npl_loans_l4#972]
+            :           :                          +- Project [CERT#973L, qidx#974, cast(ASSET#975L as double) AS ASSET#985, DEP#976, EQ#977, LNLSGR#978, NCLNLS#980]
+            :           :                             +- Filter (isnotnull(CERT#973L) AND isnotnull((qidx#974 + 4)))
+            :           :                                +- FileScan parquet [CERT#973L,qidx#974,ASSET#975L,DEP#976,EQ#977,LNLSGR#978,NCLNLS#980] Batched: true, DataFilters: [isnotnull(CERT#973L), isnotnull((qidx#974 + 4))], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/content/spark_input.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(CERT)], ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,DEP:double,EQ:double,LNLSGR:double,NCLNLS:double>
+            :           +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, true] as bigint)),false), [plan_id=2124]
+            :              +- ObjectHashAggregate(keys=[qidx#1059], functions=[percentile(eq_assets#1080, 0.5, 1, 0, 0, false), percentile(npl_loans#1081, 0.5, 1, 0, 0, false)], output=[qidx#1059, eq_assets_med_q#1022, npl_loans_med_q#1023])
+            :                 +- Exchange hashpartitioning(qidx#1059, 16), ENSURE_REQUIREMENTS, [plan_id=2121]
+            :                    +- ObjectHashAggregate(keys=[qidx#1059], functions=[partial_percentile(eq_assets#1080, 0.5, 1, 0, 0, false), partial_percentile(npl_loans#1081, 0.5, 1, 0, 0, false)], output=[qidx#1059, buf#1328, buf#1329])
+            :                       +- Project [qidx#1059, eq_assets#1080, npl_loans#1081]
+            :                          +- SortMergeJoin [CERT#1058L, qidx#1059], [CERT#1087L, qidx#1116], LeftOuter
+            :                             :- Sort [CERT#1058L ASC NULLS FIRST, qidx#1059 ASC NULLS FIRST], false, 0
+            :                             :  +- Exchange hashpartitioning(CERT#1058L, qidx#1059, 16), ENSURE_REQUIREMENTS, [plan_id=2113]
+            :                             :     +- Project [CERT#1058L, qidx#1059, CASE WHEN (ASSET#1070 > 0.0) THEN (EQ#1062 / ASSET#1070) END AS eq_assets#1080, CASE WHEN (LNLSGR#1063 > 0.0) THEN (NCLNLS#1065 / LNLSGR#1063) END AS npl_loans#1081]
+            :                             :        +- Project [CERT#1058L, qidx#1059, cast(ASSET#1060L as double) AS ASSET#1070, EQ#1062, LNLSGR#1063, NCLNLS#1065]
+            :                             :           +- Filter isnotnull(qidx#1059)
+            :                             :              +- FileScan parquet [CERT#1058L,qidx#1059,ASSET#1060L,EQ#1062,LNLSGR#1063,NCLNLS#1065] Batched: true, DataFilters: [isnotnull(qidx#1059)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/content/spark_input.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(qidx)], ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,EQ:double,LNLSGR:double,NCLNLS:double>
+            :                             +- Sort [CERT#1087L ASC NULLS FIRST, qidx#1116 ASC NULLS FIRST], false, 0
+            :                                +- Exchange hashpartitioning(CERT#1087L, qidx#1116, 16), ENSURE_REQUIREMENTS, [plan_id=2114]
+            :                                   +- Project [CERT#1087L, (qidx#1088 + 4) AS qidx#1116]
+            :                                      +- Filter (isnotnull(CERT#1087L) AND isnotnull((qidx#1088 + 4)))
+            :                                         +- FileScan parquet [CERT#1087L,qidx#1088] Batched: true, DataFilters: [isnotnull(CERT#1087L), isnotnull((qidx#1088 + 4))], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/content/spark_input.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(CERT)], ReadSchema: struct<CERT:bigint,qidx:int>
+            +- Sort [CERT#1154L ASC NULLS FIRST, qidx#1155 ASC NULLS FIRST], false, 0
+               +- Exchange hashpartitioning(CERT#1154L, qidx#1155, 16), ENSURE_REQUIREMENTS, [plan_id=2147]
+                  +- Project [CERT#1154L, qidx#1155, ((cast(rk_min#1140 as double) + (cast((ties#1141L - 1) as double) / 2.0)) / cast(n#1142L as double)) AS eq_assets_pct_q#1153]
+                     +- Filter isnotnull(CERT#1154L)
+                        +- Window [count(1) windowspecdefinition(qidx#1155, eq_assets#1176, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS ties#1141L], [qidx#1155, knownfloatingpointnormalized(normalizenanandzero(eq_assets#1176))]
+                           +- Sort [qidx#1155 ASC NULLS FIRST, knownfloatingpointnormalized(normalizenanandzero(eq_assets#1176)) ASC NULLS FIRST], false, 0
+                              +- Window [count(1) windowspecdefinition(qidx#1155, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS n#1142L], [qidx#1155]
+                                 +- Window [rank(eq_assets#1176) windowspecdefinition(qidx#1155, eq_assets#1176 ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rk_min#1140], [qidx#1155], [eq_assets#1176 ASC NULLS FIRST]
+                                    +- Sort [qidx#1155 ASC NULLS FIRST, eq_assets#1176 ASC NULLS FIRST], false, 0
+                                       +- Exchange hashpartitioning(qidx#1155, 16), ENSURE_REQUIREMENTS, [plan_id=2135]
+                                          +- Project [CERT#1154L, qidx#1155, eq_assets#1176]
+                                             +- SortMergeJoin [CERT#1154L, qidx#1155], [CERT#1183L, qidx#1212], LeftOuter
+                                                :- Sort [CERT#1154L ASC NULLS FIRST, qidx#1155 ASC NULLS FIRST], false, 0
+                                                :  +- Exchange hashpartitioning(CERT#1154L, qidx#1155, 16), ENSURE_REQUIREMENTS, [plan_id=2128]
+                                                :     +- Project [CERT#1154L, qidx#1155, CASE WHEN (ASSET#1166 > 0.0) THEN (EQ#1158 / ASSET#1166) END AS eq_assets#1176]
+                                                :        +- Project [CERT#1154L, qidx#1155, cast(ASSET#1156L as double) AS ASSET#1166, EQ#1158]
+                                                :           +- Filter (CASE WHEN (cast(ASSET#1156L as double) > 0.0) THEN isnotnull((EQ#1158 / cast(ASSET#1156L as double))) ELSE false END AND isnotnull(qidx#1155))
+                                                :              +- FileScan parquet [CERT#1154L,qidx#1155,ASSET#1156L,EQ#1158] Batched: true, DataFilters: [CASE WHEN (cast(ASSET#1156L as double) > 0.0) THEN isnotnull((EQ#1158 / cast(ASSET#1156L as doub..., Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/content/spark_input.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(qidx)], ReadSchema: struct<CERT:bigint,qidx:int,ASSET:bigint,EQ:double>
+                                                +- Sort [CERT#1183L ASC NULLS FIRST, qidx#1212 ASC NULLS FIRST], false, 0
+                                                   +- Exchange hashpartitioning(CERT#1183L, qidx#1212, 16), ENSURE_REQUIREMENTS, [plan_id=2129]
+                                                      +- Project [CERT#1183L, (qidx#1184 + 4) AS qidx#1212]
+                                                         +- Filter (isnotnull(CERT#1183L) AND isnotnull((qidx#1184 + 4)))
+                                                            +- FileScan parquet [CERT#1183L,qidx#1184] Batched: true, DataFilters: [isnotnull(CERT#1183L), isnotnull((qidx#1184 + 4))], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/content/spark_input.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(CERT)], ReadSchema: struct<CERT:bigint,qidx:int>
+

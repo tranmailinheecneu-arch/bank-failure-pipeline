@@ -1,0 +1,86 @@
+machine: 2 logical CPUs, 13.6 GB RAM | spark 4.0.1 | pyspark 4.0.1 | polars 1.35.2 | python 3.13.18
+adaptive query execution: true
+input rows: 1,681,431
+
+same shape and (CERT, qidx) keys: True | rows 1,681,431 | features 18
+        feature  max_abs_diff  null_mismatch  match
+      eq_assets  0.000000e+00              0   True
+      npl_loans  0.000000e+00              0   True
+ reserves_loans  0.000000e+00              0   True
+   loans_assets  0.000000e+00              0   True
+  liquid_assets  0.000000e+00              0   True
+        bro_dep  0.000000e+00              0   True
+      log_asset  3.552714e-15              0   True
+      asset_yoy  0.000000e+00              0   True
+      loans_yoy  0.000000e+00              0   True
+        dep_yoy  0.000000e+00              0   True
+ d_eq_assets_4q  0.000000e+00              0   True
+ d_npl_loans_4q  0.000000e+00              0   True
+    roa_q_mean4  0.000000e+00              0   True
+     roa_q_std4  6.743496e-07              0  False
+       roa_q_n4  0.000000e+00              0   True
+eq_assets_med_q  0.000000e+00              0   True
+npl_loans_med_q  0.000000e+00              0   True
+eq_assets_pct_q  0.000000e+00              0   True
+
+features matching Polars: 17 of 18 | largest absolute difference: 6.74e-07
+
+== Diagnosis of roa_q_std4 (Spark vs Polars) ==
+rows with |diff| > 1e-7: 15 of 1,652,719; none above 1e-6 (largest 6.74e-07)
+worst row: CERT 27229, qidx 7999: window of four ROAQ values all 0.0, exact std = 0, polars 6.74e-07, spark 0
+max error vs the exact value (NumPy, two-pass) in those rows: polars 6.74e-07, spark 0
+engine closer to the exact value: spark in 15 of 15 rows
+
+== Re-evaluation with tolerance 1e-6 for roa_q_std4 (1e-9 for the other features) ==
+        feature  max_abs_diff  null_mismatch  match
+      eq_assets  0.000000e+00              0   True
+      npl_loans  0.000000e+00              0   True
+ reserves_loans  0.000000e+00              0   True
+   loans_assets  0.000000e+00              0   True
+  liquid_assets  0.000000e+00              0   True
+        bro_dep  0.000000e+00              0   True
+      log_asset  3.552714e-15              0   True
+      asset_yoy  0.000000e+00              0   True
+      loans_yoy  0.000000e+00              0   True
+        dep_yoy  0.000000e+00              0   True
+ d_eq_assets_4q  0.000000e+00              0   True
+ d_npl_loans_4q  0.000000e+00              0   True
+    roa_q_mean4  0.000000e+00              0   True
+     roa_q_std4  6.743496e-07              0   True
+       roa_q_n4  0.000000e+00              0   True
+eq_assets_med_q  0.000000e+00              0   True
+npl_loans_med_q  0.000000e+00              0   True
+eq_assets_pct_q  0.000000e+00              0   True
+features matching Polars: 18 of 18 | largest absolute difference: 6.74e-07
+
+== Plan facts (formatted physical plan) ==
+Exchange (shuffle)     24
+SortMergeJoin          8
+BroadcastHashJoin      2
+Window                 8
+Sort                   24
+FileScan parquet       12
+columns read by each scan: 12, 7, 6, 2, 4, 2 of 12 in the input file
+
+== Plan facts, each node counted once (details section of the formatted plan) ==
+Scan parquet           6
+Exchange               12
+BroadcastExchange      1
+Sort                   12
+Window                 4
+SortMergeJoin          4
+BroadcastHashJoin      1
+ObjectHashAggregate    2
+
+== Time on the same Colab machine (best / median of 3, after 1 warm-up) ==
+polars lazy : 3.18 s / 3.67 s
+spark local : 58.60 s / 61.67 s  (output not collected to the driver)
+polars is 18.4x faster than Spark on this data size
+
+== Scaling on Colab (1 run per size, after the warm-up above) ==
+engine | size | rows | seconds
+polars | 1x | 1,681,431 | 5.2
+polars | 2x | 3,362,862 | 7.1
+spark  | 1x | 1,681,431 | 60.5
+spark  | 2x | 3,362,862 | 132.8
+spark  | 4x | 6,725,724 | 244.2

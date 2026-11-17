@@ -18,6 +18,7 @@ pip install -r requirements.txt
 - `download_fdic.py`: my modified copy of the starter script (extended field list, see below)
 - `part1_storage_benchmark.py`, `build_storage.py`, `part1_extra_checks.py`: Part 1
 - `part2_dq_report.py`, `part2_exits.py`, `part2_clean_panel.py`, `part2_zero_pattern.py`: Part 2
+- `part3_polars_pandas.py`, `part3_check_std.py`, `part3_make_spark_input.py`, `part3_scaling.py`, `notebooks/part3_spark.ipynb`: Part 3
 - `results/`: small result files (tables, completeness evidence)
 - `data_raw/`, `data_storage/`: generated locally, not committed
 
@@ -154,9 +155,70 @@ Output `data_storage/panel_clean/` (1,681,431 rows, 24,062 banks, 61 columns, 19
 - `y`, `y_alt`, `y_before_public` and `avail_date` are label or timing columns and must not be used as features.
 - Verification on the written data: 8 of 8 checks passed (row count, no duplicates, null labels only after 2025Q2, independent recount of positives, no label for non-failed banks, no row after the failure quarter, no future-revealing column, no exact zero left in the capital ratios).
 
+- Verification on the written data: 8 of 8 checks passed (row count, no duplicates, null labels only after 2025Q2, independent recount of positives, no label for non-failed banks, no row after the failure quarter, no future-revealing column, no exact zero left in the capital ratios).
+
+## Part 3: Scalable processing
+
+Run after Part 2.3 (reads `data_storage/panel_clean/`):
+
+1. Polars vs pandas benchmark and equivalence check: `python part3_polars_pandas.py` (about 2 minutes; outputs: `results/part3_polars_pandas.txt`, `results/part3_polars_plan.txt`; the feature tables go to `data_storage/part3/`, not committed)
+2. Diagnosis of the only numerical difference: `python part3_check_std.py | Out-File results\part3_std_check.txt -Encoding utf8`
+3. Input file for the Spark notebook (12 columns): `python part3_make_spark_input.py`
+4. Spark on Google Colab: run `notebooks/part3_spark.ipynb` (upload `data_storage/part3/spark_input.parquet` and `part3_polars_pandas.py`; Java 17, pyspark 4.0.1; outputs `results/part3_spark_results.txt`, `results/part3_spark_plan.txt`)
+5. Scaling experiment on the laptop: `python part3_scaling.py` (output: `results/part3_scaling.txt`)
+
+### Part 3.1 Polars vs pandas (`results/part3_polars_pandas.txt`)
+
+The same 18 features are built in pandas, Polars eager and Polars lazy from the clean panel (1,681,431 rows): safe ratios, 4-quarter calendar lags (self-join on `qidx + 4`, so a gap in a bank's history never shifts a lag), a 4-quarter rolling window of quarterly ROA, and same-quarter cross-sectional median and rank. Only quarter q and earlier data (or the same quarter) are used.
+
+Machine: 12 logical CPUs, 8.2 GB RAM, polars 2.1.0, pandas 3.1.1, Python 3.13.7. Each engine runs in its own process with one warm-up run; memory is the peak resident set size (sampled every 20 ms) minus the size after imports.
+
+| Engine | Timed runs | Best (s) | Median (s) | Peak memory (MB) | Speedup vs pandas (best / median) |
+|---|---|---|---|---|---|
+| pandas | 2 | 5.73 | 6.16 | 1,253 | 1.0x |
+| polars_eager | 5 | 1.96 | 2.36 | 1,991 | 2.9x / 2.6x |
+| polars_lazy | 5 | 2.01 | 2.65 | 2,443 | 2.9x / 2.3x |
+
+- Equivalence: 18 of 18 features match pandas (relative tolerance 1e-6, absolute tolerance 1e-9, and 1e-6 for the rolling standard deviation), same 1,681,431 rows and keys, same null pattern; eager and lazy Polars are identical.
+- The only difference is `roa_q_std4`: 5 of 1,652,719 comparable rows differ by more than 1e-9 (largest 1.86e-8), none by more than 1e-6. In the worst row (CERT 28535) the four ROAQ values in the window are all 0.69, so the true standard deviation is exactly 0: Polars returns 0 and pandas leaves a rounding residue.
+- Polars is about 2.3-2.9x faster than pandas but uses more memory (1.6x for eager, 1.9x for lazy), because it runs multithreaded and keeps more intermediate data at once.
+- Lazy is not faster than eager here (2.01 s vs 1.96 s) because the eager code already reads only the 12 needed columns. The lazy engine matters when the column choice is not hand-written, and for filters (Part 4).
+- Query plan (`results/part3_polars_plan.txt`): the unoptimised plan scans the panel 4 times with all 61 columns (244 column reads); the optimised plan scans it twice, reading 12 and 7 of 61 columns (19 column reads), computes the shared conditions `ASSET > 0` and `LNLSGR > 0` once, and caches the shared ratio-and-lag sub-plan so that the rolling window reuses it. No filter appears in the query, so predicate pushdown does not apply yet.
+- Timings are best-of-N on one laptop and vary between runs; pandas has fewer timed runs because it is slower.
+
+### Part 3.2 Spark (`results/part3_spark_results.txt`, `results/part3_spark_plan.txt`, `notebooks/part3_spark.ipynb`)
+
+The same 18 features are rebuilt in PySpark 4.0.1 (local mode, Google Colab: 2 vCPU, 13.6 GB RAM, Polars 1.35.2, Python 3.13, adaptive query execution on, 16 shuffle partitions) and compared with Polars on the same input file (12 columns of the clean panel, 1,681,431 rows). Spark local mode is not a cluster: it measures the engine, not the speed-up from adding machines.
+
+- Equivalence: 18 of 18 features match Polars (same rows and keys). The first comparison gave 17 of 18 with a 1e-7 tolerance for `roa_q_std4`; the diagnosis found 15 of 1,652,719 rows above 1e-7 and none above 1e-6 (largest 6.74e-7). In the worst row (CERT 27229) the four ROAQ values of the window are all 0.0, so the exact standard deviation (NumPy, two-pass) is 0: Spark returns 0 and Polars 6.74e-7, and Spark is closer to the exact value in all 15 rows. The tolerance was then set to 1e-6 for this feature (1e-9 for the others). The rounding residue depends on engine, version and the values before the window: on the laptop run (Polars 2.1.0) it was pandas that left a residue (1.9e-8). `log_asset` differs by 3.6e-15 (different `log` implementations).
+- Plan (formatted physical plan before execution, so adaptive execution may change partition counts at run time): 6 parquet scans reading 12, 7, 6, 2, 4 and 2 of the 12 columns (column pruning; one scan also carries a pushed `IsNotNull(CERT)` filter), 12 shuffles (`Exchange`), 12 sorts, 4 window operators, 4 sort-merge joins, 1 broadcast hash join (the 170-row median table) and 2 object hash aggregates (exact median). The first "Plan facts" block in the results file counts every node twice (tree plus detail section); the second block, "each node counted once", is the correct one.
+- Why 6 scans against 2 in Polars: the sub-plan with ratios and the 4-quarter lag is used by three branches (main result, medians, ranks); in this plan Spark recomputes it for each branch (no `ReusedExchange` node), while Polars caches it (`CACHE` node) and scans twice. The cost of Spark is mainly the 12 shuffles and sorts (hash partitioning on `CERT, qidx`) and JVM scheduling overhead.
+- Time on the same Colab machine (best / median of 3 after one warm-up): Polars lazy 3.18 / 3.67 s, Spark 58.60 / 61.67 s, so Polars is 18.4x faster by best time. Spark's output is not collected to the driver, while Polars materialises its result, so the comparison slightly favours Spark.
+
+### Part 3.3 When is a cluster justified? (`results/part3_spark_results.txt`, `results/part3_scaling.txt`)
+
+The panel is replicated k times (`CERT + i * 10,000,000`, so each copy is an independent set of banks).
+
+| Colab (2 vCPU), one run per size | Rows | Polars (s) | Spark (s) | Spark s per million rows |
+|---|---|---|---|---|
+| 1x | 1,681,431 | 5.2 | 60.5 | 36.0 |
+| 2x | 3,362,862 | 7.1 | 132.8 | 39.5 |
+| 4x | 6,725,724 | not run | 244.2 | 36.3 |
+
+| Laptop (12 CPUs, 8.2 GB RAM), Polars lazy | Rows | Best of 2 (s) | Peak memory (MB) | MB per million rows |
+|---|---|---|---|---|
+| 1x | 1,681,431 | 2.85 | 1,165 | 693 |
+| 2x | 3,362,862 | 5.46 | 2,127 | 633 |
+| 3x | 5,044,293 | 6.22 | 2,428 | 481 |
+
+- Spark time grows about linearly with the data (36-40 s per million rows); Polars grows less than linearly because fixed costs are shared (3.09 then 2.11 s per million rows on Colab).
+- Memory is not linear in the data (693 to 481 MB per million rows), and the same pipeline peaked at 2,443 MB in Part 3.1 against 1,165 MB here (different query structure and number of runs; not explained). The 5 GB guard never triggered, so the real single-machine limit was not reached. Extrapolating 481 to 1,453 MB per million rows, 80% of 8.2 GB holds roughly 4.5 to 13.6 million rows, i.e. 3x to 8x the current panel (an extrapolation, not a measurement).
+- Even if Spark scaled perfectly with cores and shuffles over a network were free, it would need about 18x more cores than Polars to tie on this workload (a calculation under an optimistic assumption, not a measurement).
+- Conclusion: for a 1.7 million row panel (about 200 MB of compressed Parquet, 3 seconds on one machine) a cluster is not justified. It would be justified when the data no longer fits in one machine's memory (here beyond roughly 3x to 8x the panel, e.g. loan-level data), when a time limit cannot be met on one machine, when the work splits by independent keys without cross-sectional shuffles, or when the data already lives in distributed storage.
 ## Sources
 - `fdic_download_starter.py`: starter script provided by the course instructor (original, unchanged).
 - `download_fdic.py`: copy of the starter script, modified by me only in the field list `FIN_FIELDS` and the default output folder.
 - FDIC BankFind API and field dictionary: https://api.fdic.gov/banks/docs/ (failures, institutions and history endpoints).
 - Course materials: Lecture 3 "Financial Time Series" (07_L03_TimeSeries_ML) for the point-in-time rule and the available-timestamp idea; Lessons 12-14 (visualization) for the figure design.
-- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.
+- Apache Spark / PySpark installation documentation (Java 17 or later is required): https://spark.apache.org/docs/latest/api/python/getting_started/install.html
+- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence, Polars/pandas/Spark benchmarks, Spark notebook and scaling experiment), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.
