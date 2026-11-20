@@ -1,0 +1,62 @@
+feature table: 1,681,431 rows, 24 model features (+ roa_q_n4 built but unused), labels y, y_alt, y_before_public and timestamp avail_date | built in 8.5 s
+
+== Periods: development 1984Q1-2006Q4, gap 2007Q1-2007Q4, test 2008Q1-2014Q4 ==
+(row and failure counts only; the test period is not used for any decision)
+period    rows  labelled_rows  positive_rows  failing_banks  positive_rows_actionable  positive_pct
+   dev 1193702        1193702           8678           2290                      8140         0.727
+   gap   34754          34754             48             27                        47         0.138
+  test  212645         212645           2005            513                      1764         0.943
+ after  240330         222801            129             36                       111         0.058
+
+== Model features (development rows only): missing share and single-feature AUC ==
+AUC > 0.5: a higher value goes with failure within 4 quarters; AUC < 0.5: a lower value does
+                group         feature  null_pct_dev  null_pct_1984_89  auc_dev
+              capital       eq_assets          0.24              0.19    0.053
+              capital  d_eq_assets_4q          8.00             19.38    0.137
+              capital eq_assets_med_q          0.00              0.00    0.275
+              capital eq_assets_pct_q          0.24              0.19    0.080
+        asset quality       npl_loans          1.12              1.02    0.908
+        asset quality  reserves_loans          1.15              0.61    0.751
+        asset quality  d_npl_loans_4q          8.81             20.15    0.656
+        asset quality npl_loans_med_q          0.00              0.00    0.715
+        asset quality      ore_assets          0.29              0.24    0.885
+             earnings            roaq          0.28              0.32    0.101
+             earnings     roa_q_mean4          0.26              0.25    0.064
+             earnings      roa_q_std4          2.26              5.20    0.910
+             earnings            nimy          0.00              0.00    0.255
+liquidity and funding   liquid_assets          0.01              0.00    0.276
+liquidity and funding         bro_dep          1.90              3.52    0.610
+liquidity and funding      dep_assets          0.00              0.00    0.773
+            loan book    loans_assets          0.00              0.01    0.621
+            loan book     lnre_assets          0.00              0.00    0.566
+            loan book     lnci_assets          0.00              0.00    0.522
+            loan book    lncon_assets          0.22              0.14    0.489
+               growth       asset_yoy          7.78             19.22    0.197
+               growth       loans_yoy          8.56             19.55    0.203
+               growth         dep_yoy          8.30             19.46    0.265
+                 size       log_asset          0.00              0.00    0.478
+
+== Redundancy: feature pairs with |Spearman| > 0.9 (150,000 development rows; kept, see report) ==
+eq_assets ~ eq_assets_pct_q: 0.933
+eq_assets_med_q ~ npl_loans_med_q: -0.929
+asset_yoy ~ dep_yoy: 0.904
+
+== Preprocessing Pipeline (clip -> median impute -> standardise), fitted on development rows only ==
+  feature  dev_p0.5  dev_p99.5  dev+test_p0.5  dev+test_p99.5
+eq_assets  -0.04991    0.84894       -0.03882         0.87012
+npl_loans   0.00000    0.19753        0.00000         0.19949
+     roaq -13.61330    7.27000      -13.44000         7.96000
+asset_yoy  -0.29437    2.17112       -0.29078         2.06576
+log_asset   8.04431   16.27573        8.11552        16.52220
+The right-hand columns show what fitting on dev + test rows would change (a leak); the Pipeline never sees them.
+
+== Leakage tests ==
+PASS  truncation test at 2000Q4: features of 970,740 rows unchanged when later rows are removed largest difference 0
+PASS  truncation test at 2010Q4: features of 1,326,920 rows unchanged when later rows are removed largest difference 0
+PASS  dev and test are separated by at least 4 quarters 2006Q4 -> 2008Q1
+PASS  no label or future-revealing column among the model features
+PASS  no failing bank has positive rows in both dev and test
+PASS  the test period ends before the labels become incomplete (2025Q2)
+PASS  clip bounds of the fitted Pipeline equal the quantiles of the development rows
+PASS  fitting on dev + test rows WOULD change the clip bounds (so the leak is real and the Pipeline avoids it) largest relative shift of an upper bound 0.19
+PASS  transform on test rows leaves the fitted bounds unchanged
