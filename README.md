@@ -190,7 +190,7 @@ Machine: 12 logical CPUs, 8.2 GB RAM, polars 2.1.0, pandas 3.1.1, Python 3.13.7.
 
 The same 18 features are rebuilt in PySpark 4.0.1 (local mode, Google Colab: 2 vCPU, 13.6 GB RAM, Polars 1.35.2, Python 3.13, adaptive query execution on, 16 shuffle partitions) and compared with Polars on the same input file (12 columns of the clean panel, 1,681,431 rows). Spark local mode is not a cluster: it measures the engine, not the speed-up from adding machines.
 
-- Equivalence: 18 of 18 features match Polars (same rows and keys). The first comparison gave 17 of 18 with a 1e-7 tolerance for `roa_q_std4`; the diagnosis found 15 of 1,652,719 rows above 1e-7 and none above 1e-6 and none above 1e-6 (largest 6.74e-7). In the worst row (CERT 27229) the four ROAQ values of the window are all 0.0, so the exact standard deviation (NumPy, two-pass) is 0: Spark returns 0 and Polars 6.74e-7, and Spark is closer to the exact value in all 15 rows. The tolerance was then set to 1e-6 for this feature (1e-9 for the others). The rounding residue depends on engine, version and the values before the window: on the laptop run (Polars 2.1.0) it was pandas that left a residue (1.9e-8). `log_asset` differs by 3.6e-15 (different `log` implementations).
+- Equivalence: 18 of 18 features match Polars (same rows and keys). The first comparison gave 17 of 18 with a 1e-7 tolerance for `roa_q_std4`; the diagnosis found 15 of 1,652,719 rows above 1e-7 and none above 1e-6 (largest 6.74e-7). In the worst row (CERT 27229) the four ROAQ values of the window are all 0.0, so the exact standard deviation (NumPy, two-pass) is 0: Spark returns 0 and Polars 6.74e-7, and Spark is closer to the exact value in all 15 rows. The tolerance was then set to 1e-6 for this feature (1e-9 for the others). The rounding residue depends on engine, version and the values before the window: on the laptop run (Polars 2.1.0) it was pandas that left a residue (1.9e-8). `log_asset` differs by 3.6e-15 (different `log` implementations).
 - Plan (formatted physical plan before execution, so adaptive execution may change partition counts at run time): 6 parquet scans reading 12, 7, 6, 2, 4 and 2 of the 12 columns (column pruning; one scan also carries a pushed `IsNotNull(CERT)` filter), 12 shuffles (`Exchange`), 12 sorts, 4 window operators, 4 sort-merge joins, 1 broadcast hash join (the 170-row median table) and 2 object hash aggregates (exact median). The first "Plan facts" block in the results file counts every node twice (tree plus detail section); the second block, "each node counted once", is the correct one.
 - Why 6 scans against 2 in Polars: the sub-plan with ratios and the 4-quarter lag is used by three branches (main result, medians, ranks); in this plan Spark recomputes it for each branch (no `ReusedExchange` node), while Polars caches it (`CACHE` node) and scans twice. The cost of Spark is mainly the 12 shuffles and sorts (hash partitioning on `CERT, qidx`) and JVM scheduling overhead.
 - Time on the same Colab machine (best / median of 3 after one warm-up): Polars lazy 3.18 / 3.67 s, Spark 58.60 / 61.67 s, so Polars is 18.4x faster by best time. Spark's output is not collected to the driver, while Polars materialises its result, so the comparison slightly favours Spark.
@@ -211,10 +211,11 @@ The panel is replicated k times (`CERT + i * 10,000,000`, so each copy is an ind
 | 2x | 3,362,862 | 5.46 | 2,127 | 633 |
 | 3x | 5,044,293 | 6.22 | 2,428 | 481 |
 
+- The 1x Polars time here (5.2 s) differs from the 3.18 s of Part 3.2: this loop times a single run of the replicated query instead of the best of three (cause not isolated).
 - Spark time grows about linearly with the data (36-40 s per million rows); Polars grows less than linearly because fixed costs are shared (3.09 then 2.11 s per million rows on Colab).
 - Memory is not linear in the data (693 to 481 MB per million rows), and the same pipeline peaked at 2,443 MB in Part 3.1 against 1,165 MB here (different query structure and number of runs; not explained). The 5 GB guard never triggered, so the real single-machine limit was not reached. Extrapolating 481 to 1,453 MB per million rows, 80% of 8.2 GB holds roughly 4.5 to 13.6 million rows, i.e. 3x to 8x the current panel (an extrapolation, not a measurement).
 - Even if Spark scaled perfectly with cores and shuffles over a network were free, it would need about 18x more cores than Polars to tie on this workload (a calculation under an optimistic assumption, not a measurement).
-- Conclusion: for a 1.7 million row panel (about 200 MB of compressed Parquet, 3 seconds on one machine) a cluster is not justified. It would be justified when the data no longer fits in one machine's memory (here beyond roughly 3x to 8x the panel, e.g. loan-level data), when a time limit cannot be met on one machine, when the work splits by independent keys without cross-sectional shuffles, or when the data already lives in distributed storage. The 1x Polars time here (5.2 s) differs from the 3.18 s of Part 3.2: this loop times a single run of the replicated query instead of the best of three (cause not isolated).
+- Conclusion: for a 1.7 million row panel (about 200 MB of compressed Parquet, 3 seconds on one machine) a cluster is not justified. It would be justified when the data no longer fits in one machine's memory (here beyond roughly 3x to 8x the panel, e.g. loan-level data), when a time limit cannot be met on one machine, when the work splits by independent keys without cross-sectional shuffles, or when the data already lives in distributed storage. 
 
 ## Part 4: Feature pipeline
 
@@ -222,250 +223,51 @@ Run after Part 2.3 and Part 3 (reads `data_storage/panel_clean/`, imports `part3
 
 1. Feature table, split definition, preprocessing Pipeline and leakage tests: `python part4_features.py` (output: `results/part4_features.txt`; the feature table `data_storage/part4/features.parquet` is not committed). Shared definitions (periods, feature list, preprocessing) are in `bank_common.py`.
 
+### Part 4 feature table, split and leakage control (`results/part4_features.txt`)
 
-"""Part 4: leak-free feature table joined with the label, split definition, preprocessing Pipeline and leakage tests.
+Feature table `data_storage/part4/features.parquet` (1,681,431 rows): 24 model features in 7 groups (17 from Part 3 plus 7 same-quarter ratios) joined with the labels `y`, `y_alt`, `y_before_public` and the timestamp `avail_date` of Part 2.3. Every feature uses quarter q and earlier data only (lags and rolling windows look backwards) or the same quarter (cross-sectional median and rank). Not used: `roa_q_n4` (a count of quarters, a data-availability artefact), the year or quarter index (a model would learn the era), the regulatory capital ratios RBC1AAJ and RBCRWAJ (not reported in 1984-1989, zero in about 37% of rows from 2020) and the `ACTIVE` flag of the institutions table (it knows the future). The single-feature AUC and the missing shares below use development rows only.
 
-Reads  : data_storage/panel_clean/*/*.parquet (Part 2.3)
-Writes : data_storage/part4/features.parquet (not committed)
-         results/part4_features.txt, results/part4_readme_block.md
-No model is fitted here. Test-period rows are used only for counts and to demonstrate what a leak would change.
-"""
-import time
-from pathlib import Path
+| Group | Feature | Why it matters | Null % dev | Null % 1984-89 | Dev AUC (single feature) |
+|---|---|---|---|---|---|
+| capital | `eq_assets` | Capital buffer: equity / assets; thin capital absorbs fewer losses | 0.24 | 0.19 | 0.053 |
+| capital | `d_eq_assets_4q` | 4-quarter change of the capital ratio: erosion is a warning sign | 8.00 | 19.38 | 0.137 |
+| capital | `eq_assets_med_q` | Median capital ratio of all banks in the same quarter (system-wide context) | 0.00 | 0.00 | 0.275 |
+| capital | `eq_assets_pct_q` | Rank of the bank's capital ratio within the quarter (0 to 1) | 0.24 | 0.19 | 0.080 |
+| asset quality | `npl_loans` | Non-current loans / gross loans: credit problems already visible | 1.12 | 1.02 | 0.908 |
+| asset quality | `reserves_loans` | Loan-loss reserves / gross loans: cushion against bad loans | 1.15 | 0.61 | 0.751 |
+| asset quality | `d_npl_loans_4q` | 4-quarter change of the non-current loan ratio | 8.81 | 20.15 | 0.656 |
+| asset quality | `npl_loans_med_q` | Median non-current loan ratio in the quarter (system-wide stress) | 0.00 | 0.00 | 0.715 |
+| asset quality | `ore_assets` | Foreclosed real estate / assets: assets taken over from defaulted loans | 0.29 | 0.24 | 0.885 |
+| earnings | `roaq` | Quarterly return on assets (earnings power) | 0.28 | 0.32 | 0.101 |
+| earnings | `roa_q_mean4` | Average quarterly ROA over the last 4 quarters | 0.26 | 0.25 | 0.064 |
+| earnings | `roa_q_std4` | Volatility of quarterly ROA over the last 4 quarters | 2.26 | 5.20 | 0.910 |
+| earnings | `nimy` | Net interest margin (core profitability) | 0.00 | 0.00 | 0.255 |
+| liquidity and funding | `liquid_assets` | (Cash balances + securities) / assets: liquidity buffer | 0.01 | 0.00 | 0.276 |
+| liquidity and funding | `bro_dep` | Brokered deposits / deposits: reliance on volatile funding | 1.90 | 3.52 | 0.610 |
+| liquidity and funding | `dep_assets` | Deposits / assets: funding structure | 0.00 | 0.00 | 0.773 |
+| loan book | `loans_assets` | Loans / assets: share of the balance sheet exposed to credit risk | 0.00 | 0.01 | 0.621 |
+| loan book | `lnre_assets` | Real-estate loans / assets: concentration in real estate | 0.00 | 0.00 | 0.566 |
+| loan book | `lnci_assets` | Commercial and industrial loans / assets | 0.00 | 0.00 | 0.522 |
+| loan book | `lncon_assets` | Consumer loans / assets | 0.22 | 0.14 | 0.489 |
+| growth | `asset_yoy` | Asset growth over 4 quarters: very fast growth can signal risk-taking | 7.78 | 19.22 | 0.197 |
+| growth | `loans_yoy` | Loan growth over 4 quarters | 8.56 | 19.55 | 0.203 |
+| growth | `dep_yoy` | Deposit growth over 4 quarters | 8.30 | 19.46 | 0.265 |
+| size | `log_asset` | Size (log of assets) | 0.00 | 0.00 | 0.478 |
 
-import numpy as np
-import pandas as pd
-import polars as pl
-from sklearn.metrics import roc_auc_score
+- Redundancy: 3 feature pairs have a Spearman correlation above 0.9 in development rows (`eq_assets` ~ `eq_assets_pct_q`; `eq_assets_med_q` ~ `npl_loans_med_q`; `asset_yoy` ~ `dep_yoy`). They are kept: the tree model is insensitive to it and the logistic model is regularised.
 
-from bank_common import (DEV, FEATURES_ALL, FEATURES_MODEL, FORBIDDEN, GAP, GROUPS, HORIZON, SEED, TEST,
-                         QuantileClipper, Q, dev_mask, ql, preprocessing, test_mask)
-from part3_polars_pandas import KEYS, PANEL_GLOB, polars_pipeline, sdiv
+Split (decided from the failure counts of Part 2.3 before any model was fitted; the test period is used once, in Part 5): development 1984Q1 to 2006Q4, gap 2007Q1 to 2007Q4 (four quarters, because a label looks four quarters ahead), test 2008Q1 to 2014Q4.
 
-OUT = Path("data_storage/part4")
-OUT.mkdir(parents=True, exist_ok=True)
-RES = Path("results")
-RES.mkdir(exist_ok=True)
+| Period | Rows | Labelled rows | Positive rows | Failing banks | Positive rows (actionable) | Positive % |
+|---|---|---|---|---|---|---|
+| dev | 1,193,702 | 1,193,702 | 8,678 | 2,290 | 8,140 | 0.727 |
+| gap | 34,754 | 34,754 | 48 | 27 | 47 | 0.138 |
+| test | 212,645 | 212,645 | 2,005 | 513 | 1,764 | 0.943 |
+| after | 240,330 | 222,801 | 129 | 36 | 111 | 0.058 |
 
-WHY = {
-    "eq_assets": "Capital buffer: equity / assets; thin capital absorbs fewer losses",
-    "d_eq_assets_4q": "4-quarter change of the capital ratio: erosion is a warning sign",
-    "eq_assets_med_q": "Median capital ratio of all banks in the same quarter (system-wide context)",
-    "eq_assets_pct_q": "Rank of the bank's capital ratio within the quarter (0 to 1)",
-    "npl_loans": "Non-current loans / gross loans: credit problems already visible",
-    "reserves_loans": "Loan-loss reserves / gross loans: cushion against bad loans",
-    "d_npl_loans_4q": "4-quarter change of the non-current loan ratio",
-    "npl_loans_med_q": "Median non-current loan ratio in the quarter (system-wide stress)",
-    "ore_assets": "Foreclosed real estate / assets: assets taken over from defaulted loans",
-    "roaq": "Quarterly return on assets (earnings power)",
-    "roa_q_mean4": "Average quarterly ROA over the last 4 quarters",
-    "roa_q_std4": "Volatility of quarterly ROA over the last 4 quarters",
-    "nimy": "Net interest margin (core profitability)",
-    "liquid_assets": "(Cash balances + securities) / assets: liquidity buffer",
-    "bro_dep": "Brokered deposits / deposits: reliance on volatile funding",
-    "dep_assets": "Deposits / assets: funding structure",
-    "loans_assets": "Loans / assets: share of the balance sheet exposed to credit risk",
-    "lnre_assets": "Real-estate loans / assets: concentration in real estate",
-    "lnci_assets": "Commercial and industrial loans / assets",
-    "lncon_assets": "Consumer loans / assets",
-    "asset_yoy": "Asset growth over 4 quarters: very fast growth can signal risk-taking",
-    "loans_yoy": "Loan growth over 4 quarters",
-    "dep_yoy": "Deposit growth over 4 quarters",
-    "log_asset": "Size (log of assets)",
-}
-
-out = []
-
-
-def log(s=""):
-    out.append(str(s))
-
-
-def build(lf):
-    """18 features of Part 3 plus 7 extra same-quarter ratios. Uses quarter q and earlier data only."""
-    f = lambda c: pl.col(c).cast(pl.Float64)
-    base = polars_pipeline(lf)
-    extra = lf.select(
-        "CERT", "qidx",
-        f("ROAQ").alias("roaq"), f("NIMY").alias("nimy"),
-        sdiv(f("ORE"), f("ASSET")).alias("ore_assets"),
-        sdiv(f("LNRE"), f("ASSET")).alias("lnre_assets"),
-        sdiv(f("LNCI"), f("ASSET")).alias("lnci_assets"),
-        sdiv(f("LNCON"), f("ASSET")).alias("lncon_assets"),
-        sdiv(f("DEP"), f("ASSET")).alias("dep_assets"),
-    )
-    return base.join(extra, on=KEYS, how="left").sort(KEYS)
-
-
-t0 = time.time()
-lf = pl.scan_parquet(PANEL_GLOB)
-labels = lf.select("CERT", "qidx", "y", "y_alt", "y_before_public", "avail_date")
-feat = build(lf).join(labels, on=KEYS, how="left").sort(KEYS).collect().to_pandas()
-q = feat["qidx"].to_numpy()
-y = feat["y"].to_numpy(dtype=float)
-feat["period"] = np.select(
-    [(q >= DEV[0]) & (q <= DEV[1]), (q >= GAP[0]) & (q <= GAP[1]), (q >= TEST[0]) & (q <= TEST[1])],
-    ["dev", "gap", "test"], default="after")
-feat.to_parquet(OUT / "features.parquet", index=False, compression="zstd")
-log(f"feature table: {len(feat):,} rows, {len(FEATURES_MODEL)} model features (+ roa_q_n4 built but unused), "
-    f"labels y, y_alt, y_before_public and timestamp avail_date | built in {time.time() - t0:.1f} s")
-
-# ---------------------------------------------------------------- periods
-log(f"\n== Periods: development {ql(DEV[0])}-{ql(DEV[1])}, gap {ql(GAP[0])}-{ql(GAP[1])}, test {ql(TEST[0])}-{ql(TEST[1])} ==")
-log("(row and failure counts only; the test period is not used for any decision)")
-prow = []
-for p in ["dev", "gap", "test", "after"]:
-    d = feat[feat.period == p]
-    lab = d[d.y.notna()]
-    pos = lab[lab.y == 1]
-    act = pos[pos.y_before_public == 0]
-    prow.append((p, len(d), len(lab), len(pos), pos.CERT.nunique(), len(act), round(100 * len(pos) / max(len(lab), 1), 3)))
-ptab = pd.DataFrame(prow, columns=["period", "rows", "labelled_rows", "positive_rows", "failing_banks",
-                                   "positive_rows_actionable", "positive_pct"])
-log(ptab.to_string(index=False))
-dev_banks = set(feat[(feat.period == "dev") & (feat.y == 1)].CERT)
-test_banks = set(feat[(feat.period == "test") & (feat.y == 1)].CERT)
-
-# ---------------------------------------------------------------- feature table (development rows only)
-dm = dev_mask(q, y)
-era = dm & (q <= Q(1989, 4))
-yd = y[dm].astype(int)
-frows = []
-for grp, cols in GROUPS.items():
-    for c in cols:
-        x = feat[c].to_numpy(float)
-        m = ~np.isnan(x[dm])
-        auc = roc_auc_score(yd[m], x[dm][m]) if m.sum() > 100 and yd[m].min() != yd[m].max() else float("nan")
-        frows.append((grp, c, round(100 * np.isnan(x[dm]).mean(), 2), round(100 * np.isnan(x[era]).mean(), 2), round(auc, 3)))
-ft = pd.DataFrame(frows, columns=["group", "feature", "null_pct_dev", "null_pct_1984_89", "auc_dev"])
-log("\n== Model features (development rows only): missing share and single-feature AUC ==")
-log("AUC > 0.5: a higher value goes with failure within 4 quarters; AUC < 0.5: a lower value does")
-log(ft.to_string(index=False))
-
-samp = feat.loc[dm, FEATURES_MODEL].sample(150000, random_state=SEED)
-corr = samp.corr(method="spearman")
-pairs = [(a, b, round(float(corr.loc[a, b]), 3)) for i, a in enumerate(FEATURES_MODEL) for b in FEATURES_MODEL[i + 1:]
-         if abs(corr.loc[a, b]) > 0.9]
-log("\n== Redundancy: feature pairs with |Spearman| > 0.9 (150,000 development rows; kept, see report) ==")
-log("\n".join(f"{a} ~ {b}: {r}" for a, b, r in pairs) if pairs else "none")
-
-# ---------------------------------------------------------------- preprocessing pipeline demonstration
-Xdev = feat.loc[dm, FEATURES_MODEL].to_numpy(float)
-tmask = test_mask(q, y)
-Xtest = feat.loc[tmask, FEATURES_MODEL].to_numpy(float)
-pipe = preprocessing("linear").fit(Xdev)
-lo, hi = pipe.named_steps["clip"].lo_.copy(), pipe.named_steps["clip"].hi_.copy()
-contam = QuantileClipper().fit(np.vstack([Xdev, Xtest]))
-pipe.transform(Xtest)
-log("\n== Preprocessing Pipeline (clip -> median impute -> standardise), fitted on development rows only ==")
-show_cols = ["eq_assets", "npl_loans", "roaq", "asset_yoy", "log_asset"]
-brow = []
-for c in show_cols:
-    i = FEATURES_MODEL.index(c)
-    brow.append((c, lo[i], hi[i], contam.lo_[i], contam.hi_[i]))
-btab = pd.DataFrame(brow, columns=["feature", "dev_p0.5", "dev_p99.5", "dev+test_p0.5", "dev+test_p99.5"])
-log(btab.round(5).to_string(index=False))
-log("The right-hand columns show what fitting on dev + test rows would change (a leak); the Pipeline never sees them.")
-
-# ---------------------------------------------------------------- leakage tests
-log("\n== Leakage tests ==")
-tests = []
-
-
-def trunc_check(q0):
-    part = build(lf.filter(pl.col("qidx") <= q0)).collect().to_pandas()
-    full = feat.loc[feat.qidx <= q0, ["CERT", "qidx"] + FEATURES_ALL].reset_index(drop=True)
-    if len(part) != len(full) or not (part[["CERT", "qidx"]].to_numpy() == full[["CERT", "qidx"]].to_numpy()).all():
-        return False, float("nan"), len(part)
-    worst, ok = 0.0, True
-    for c in FEATURES_ALL:
-        a, b = part[c].to_numpy(float), full[c].to_numpy(float)
-        if (np.isnan(a) != np.isnan(b)).any():
-            ok = False
-        m = ~np.isnan(a) & ~np.isnan(b)
-        worst = max(worst, float(np.abs(a[m] - b[m]).max()) if m.any() else 0.0)
-    return ok and worst < 1e-9, worst, len(part)
-
-
-for yy, qq in [(2000, 4), (2010, 4)]:
-    ok, worst, n = trunc_check(Q(yy, qq))
-    tests.append((f"truncation test at {yy}Q{qq}: features of {n:,} rows unchanged when later rows are removed",
-                  ok, f"largest difference {worst:.3g}"))
-dev_last = int(q[dm].max())
-test_first = int(q[tmask].min())
-tests.append(("dev and test are separated by at least 4 quarters", test_first - dev_last - 1 >= HORIZON,
-              f"{ql(dev_last)} -> {ql(test_first)}"))
-tests.append(("no label or future-revealing column among the model features",
-              not any(c in FORBIDDEN for c in FEATURES_MODEL), ""))
-tests.append(("no failing bank has positive rows in both dev and test", len(dev_banks & test_banks) == 0, ""))
-tests.append(("the test period ends before the labels become incomplete (2025Q2)", TEST[1] <= Q(2025, 2), ""))
-direct = np.nanquantile(Xdev, 0.005, axis=0)
-tests.append(("clip bounds of the fitted Pipeline equal the quantiles of the development rows",
-              bool(np.allclose(lo, direct, equal_nan=True)), ""))
-shift = float(np.nanmax(np.abs(contam.hi_ - hi) / np.maximum(np.abs(hi), 1e-12)))
-tests.append(("fitting on dev + test rows WOULD change the clip bounds (so the leak is real and the Pipeline avoids it)",
-              shift > 0, f"largest relative shift of an upper bound {shift:.3g}"))
-tests.append(("transform on test rows leaves the fitted bounds unchanged",
-              bool(np.array_equal(lo, pipe.named_steps['clip'].lo_, equal_nan=True)
-                   and np.array_equal(hi, pipe.named_steps['clip'].hi_, equal_nan=True)), ""))
-all_ok = True
-for name, ok, detail in tests:
-    all_ok &= bool(ok)
-    log(f"{'PASS' if ok else 'FAIL'}  {name} {detail}".rstrip())
-
-(RES / "part4_features.txt").write_text("\n".join(out), encoding="utf-8")
-
-# ---------------------------------------------------------------- README block
-md = [
-    "### Part 4 feature table, split and leakage control (`results/part4_features.txt`)",
-    "",
-    f"Feature table `data_storage/part4/features.parquet` ({len(feat):,} rows): {len(FEATURES_MODEL)} model features in 7 groups "
-    "(17 from Part 3 plus 7 same-quarter ratios) joined with the labels `y`, `y_alt`, `y_before_public` and the timestamp `avail_date` of Part 2.3. "
-    "Every feature uses quarter q and earlier data only (lags and rolling windows look backwards) or the same quarter "
-    "(cross-sectional median and rank). Not used: `roa_q_n4` (a count of quarters, a data-availability artefact), the year or quarter index "
-    "(a model would learn the era), the regulatory capital ratios RBC1AAJ and RBCRWAJ (not reported in 1984-1989, zero in about 37% of rows "
-    "from 2020) and the `ACTIVE` flag of the institutions table (it knows the future). The single-feature AUC and the missing shares below "
-    "use development rows only.",
-    "",
-    "| Group | Feature | Why it matters | Null % dev | Null % 1984-89 | Dev AUC (single feature) |",
-    "|---|---|---|---|---|---|",
-]
-for (grp, cols), _ in zip(GROUPS.items(), range(len(GROUPS))):
-    for c in cols:
-        r = ft[ft.feature == c].iloc[0]
-        md.append(f"| {grp} | `{c}` | {WHY[c]} | {r.null_pct_dev:.2f} | {r.null_pct_1984_89:.2f} | {r.auc_dev:.3f} |")
-md += [
-    "",
-    f"- Redundancy: {len(pairs)} feature pairs have a Spearman correlation above 0.9 in development rows"
-    + (" (" + "; ".join(f"`{a}` ~ `{b}`" for a, b, _ in pairs) + ")" if pairs else "")
-    + ". They are kept: the tree model is insensitive to it and the logistic model is regularised.",
-    "",
-    f"Split (decided from the failure counts of Part 2.3 before any model was fitted; the test period is used once, in Part 5): "
-    f"development {ql(DEV[0])} to {ql(DEV[1])}, gap {ql(GAP[0])} to {ql(GAP[1])} (four quarters, because a label looks four quarters ahead), "
-    f"test {ql(TEST[0])} to {ql(TEST[1])}.",
-    "",
-    "| Period | Rows | Labelled rows | Positive rows | Failing banks | Positive rows (actionable) | Positive % |",
-    "|---|---|---|---|---|---|---|",
-]
-for r in ptab.itertuples():
-    md.append(f"| {r.period} | {r.rows:,} | {r.labelled_rows:,} | {r.positive_rows:,} | {r.failing_banks:,} | "
-              f"{r.positive_rows_actionable:,} | {r.positive_pct:.3f} |")
-md += [
-    "",
-    "- All preprocessing lives in a scikit-learn `Pipeline` (`bank_common.py`, function `preprocessing`) fitted on training rows only: "
-    "clipping to the 0.5% and 99.5% quantiles, median imputation and standardisation for the linear model; clipping only for the tree "
-    "model (native missing-value handling). Demonstration: fitting the clip bounds on dev + test rows instead of dev rows changes them "
-    f"(largest relative shift of an upper bound {shift:.2g}), which is exactly the leak the Pipeline avoids.",
-    "- Rows with `y_before_public = 1` (the report was not public before the bank failed) are flagged here; their treatment in training and "
-    "evaluation is decided in Part 5.",
-     f"- Leakage tests: 8 of 8 safety tests passed (features of earlier rows do not change when later rows are removed, at two cut-offs; four-quarter dev/test gap; no label column among the features; no failing bank in both periods; test period ends before labels become incomplete; clip bounds equal to the development quantiles; unchanged after transforming test rows), plus one demonstration that fitting the clip bounds on dev + test rows would change them.
-]
-(RES / "part4_readme_block.md").write_text("\n".join(md) + "\n", encoding="utf-8")
-
-print("\n".join(out)[-3800:])
-print("\nfull report: results/part4_features.txt | README block: results/part4_readme_block.md")
-if not all_ok:
-    raise SystemExit("a leakage test FAILED: do not model before fixing it")
+- All preprocessing lives in a scikit-learn `Pipeline` (`bank_common.py`, function `preprocessing`) fitted on training rows only: clipping to the 0.5% and 99.5% quantiles, median imputation and standardisation for the linear model; clipping only for the tree model (native missing-value handling). Demonstration: fitting the clip bounds on dev + test rows instead of dev rows changes them (largest relative shift of an upper bound 0.19), which is exactly the leak the Pipeline avoids.
+- Rows with `y_before_public = 1` (the report was not public before the bank failed) are flagged here; their treatment in training and evaluation is decided in Part 5.
+- Leakage tests: 8 of 8 safety tests passed (features of earlier rows do not change when later rows are removed, at two cut-offs; four-quarter dev/test gap; no label column among the features; no failing bank in both periods; test period ends before labels become incomplete; clip bounds equal to the development quantiles; unchanged after transforming test rows), plus one demonstration that fitting the clip bounds on dev + test rows would change them.
 
 ## Sources
 - `fdic_download_starter.py`: starter script provided by the course instructor (original, unchanged).
@@ -473,4 +275,4 @@ if not all_ok:
 - FDIC BankFind API and field dictionary: https://api.fdic.gov/banks/docs/ (failures, institutions and history endpoints).
 - Course materials: Lecture 3 "Financial Time Series" (07_L03_TimeSeries_ML) for the point-in-time rule and the available-timestamp idea; Lessons 12-14 (visualization) for the figure design.
 - Apache Spark / PySpark installation documentation (Java 17 or later is required): https://spark.apache.org/docs/latest/api/python/getting_started/install.html
-- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence, Polars/pandas/Spark benchmarks, Spark notebook and scaling experiment),feature pipeline (Part 4), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.
+- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence, Polars/pandas/Spark benchmarks, Spark notebook and scaling experiment), feature pipeline (Part 4), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.
