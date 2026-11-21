@@ -1,0 +1,103 @@
+{
+ "selected": "M2 gbm 300 iter, lr 0.05, 31 leaves",
+ "baselines": [
+  "B0 npl_loans only",
+  "B1 logistic, 3 features"
+ ],
+ "kappa_main": 0.02,
+ "kappas": [
+  0.005,
+  0.01,
+  0.02,
+  0.05,
+  0.1
+ ],
+ "loss_rate": 0.19588695384748128,
+ "mean_cfn": 15332.029427447447,
+ "models": {
+  "B0 npl_loans only": {
+   "kind": "single",
+   "cols": [
+    "npl_loans"
+   ],
+   "params": {}
+  },
+  "B1 logistic, 3 features": {
+   "kind": "logit",
+   "cols": [
+    "eq_assets",
+    "npl_loans",
+    "roaq"
+   ],
+   "params": {
+    "C": 1.0
+   }
+  },
+  "M2 gbm 300 iter, lr 0.05, 31 leaves": {
+   "kind": "gbm",
+   "cols": [
+    "eq_assets",
+    "d_eq_assets_4q",
+    "eq_assets_med_q",
+    "eq_assets_pct_q",
+    "npl_loans",
+    "reserves_loans",
+    "d_npl_loans_4q",
+    "npl_loans_med_q",
+    "ore_assets",
+    "roaq",
+    "roa_q_mean4",
+    "roa_q_std4",
+    "nimy",
+    "liquid_assets",
+    "bro_dep",
+    "dep_assets",
+    "loans_assets",
+    "lnre_assets",
+    "lnci_assets",
+    "lncon_assets",
+    "asset_yoy",
+    "loans_yoy",
+    "dep_yoy",
+    "log_asset"
+   ],
+   "params": {
+    "max_iter": 300,
+    "lr": 0.05,
+    "leaves": 31
+   }
+  }
+ },
+ "thresholds": {
+  "B1 logistic, 3 features": {
+   "0.005": 0.2627696618668198,
+   "0.01": 0.3036410128411665,
+   "0.02": 0.32353386048826116,
+   "0.05": 0.4410891942559008,
+   "0.1": 0.48328189013735007
+  },
+  "M2 gbm 300 iter, lr 0.05, 31 leaves": {
+   "0.005": 0.00035551592779442477,
+   "0.01": 0.0009450677706495137,
+   "0.02": 0.002010350099680538,
+   "0.05": 0.008032424727926823,
+   "0.1": 0.03835773800700071
+  }
+ },
+ "alarm_rates_pct": {
+  "B1 logistic, 3 features": {
+   "0.005": 5.96,
+   "0.01": 4.97,
+   "0.02": 4.58,
+   "0.05": 3.14,
+   "0.1": 2.8
+  },
+  "M2 gbm 300 iter, lr 0.05, 31 leaves": {
+   "0.005": 15.27,
+   "0.01": 9.09,
+   "0.02": 6.33,
+   "0.05": 3.37,
+   "0.1": 1.74
+  }
+ }
+}

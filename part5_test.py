@@ -23,8 +23,10 @@ if LOCK.exists():
 	raise SystemExit("The test period was already used (results/part5_test_LOCK.json exists). "
 					 "Running it again would be test reuse: refusing.")
 sel = json.loads(SEL.read_text(encoding="utf-8"))
-LOCK.write_text(json.dumps({"opened": datetime.now().isoformat(timespec="seconds"),
-							"selection_sha256": hashlib.sha256(SEL.read_bytes()).hexdigest()}, indent=1))
+need = ["selected", "baselines", "kappas", "loss_rate", "mean_cfn", "models", "thresholds", "alarm_rates_pct", "dev_median_asset"]
+missing = [k for k in need if k not in sel]
+if missing:
+    raise SystemExit(f"results/part5_selection.json lacks {missing}: rerun part5_validation.py (the test period has NOT been opened)")
 
 feat = pd.read_parquet("data_storage/part4/features.parquet", filters=[("period", "in", ["dev", "test"])]).reset_index(drop=True)
 dev = (feat["period"] == "dev").to_numpy()
@@ -51,6 +53,8 @@ log(f"test period {ql(q[tst].min())} to {ql(q[tst].max())}: {int(tst.sum()):,} r
 log(f"models refitted on all development rows ({int(dev.sum()):,} rows); selected model: {SELN}")
 
 scores = {}
+LOCK.write_text(json.dumps({"opened": datetime.now().isoformat(timespec="seconds"),
+                            "selection_sha256": hashlib.sha256(SEL.read_bytes()).hexdigest()}, indent=1))
 for n in names:
 	spec = sel["models"][n]
 	X = feat[spec["cols"]].to_numpy(float)

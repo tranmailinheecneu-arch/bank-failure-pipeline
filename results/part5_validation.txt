@@ -1,0 +1,45 @@
+development rows: 1,193,702 (1984Q1 to 2006Q4), positive rows 8,678, actionable positive rows 8,140
+
+== Cost of a missed failure, estimated from the failures table (failures of 1984-2007 only) ==
+failures in the table: 2,314; with COST and assets at failure: 2,291
+asset-weighted loss rate = sum(COST) / sum(assets at failure) = 0.1959 (median bank 0.2072, 90th percentile 0.4884)
+average cost of a missed failure per positive bank-quarter: 15.3 million USD (loss rate x assets / 4)
+false-alarm cost = kappa x 15.3 million USD; main kappa = 0.02 (NOT observable in the FDIC data: an assumption, tested with kappa from 0.005 to 0.1)
+
+== Purged expanding-window folds ==
+ fold         train    validation  purged_q  train_rows  train_pos_rows  val_rows  val_pos_rows  val_failing_banks  val_base_rate_%
+fold1 1984Q1-1986Q4 1988Q1-1989Q4         4      215820            1758    132161          3226               1076            2.441
+fold2 1984Q1-1988Q4 1990Q1-1991Q4         4      353896            4463    122282          1790                673            1.464
+fold3 1984Q1-1990Q4 1992Q1-1995Q4         4      481088            7200    212393           473                191            0.223
+fold4 1984Q1-1994Q4 1996Q1-2006Q4         4      704362            8488    440235           163                 49            0.037
+
+== Model comparison on out-of-fold predictions (actionable rows; Average Precision is the main metric) ==
+chance level of AP = positive rate of the fold (column val_base_rate_% above)
+                              model  mean_fold_AP  AP_f1  AP_f2  AP_f3  AP_f4  pooled_AP  pooled_AUC  recall@1%  recall@5%  lift@5%  pooled_AP_all_rows
+                  B0 npl_loans only        0.1043 0.2559 0.1065 0.0415 0.0133     0.1360      0.9182      0.330      0.677     13.5              0.1441
+            B1 logistic, 3 features        0.2184 0.4505 0.2249 0.1108 0.0875     0.2868      0.9789      0.536      0.941     18.8              0.3048
+                 M1 logistic C=0.01        0.2091 0.4460 0.2145 0.1120 0.0640     0.2738      0.9710      0.523      0.866     17.3              0.2905
+                  M1 logistic C=0.1        0.2087 0.4463 0.2136 0.1115 0.0633     0.2733      0.9710      0.522      0.866     17.3              0.2901
+                    M1 logistic C=1        0.2086 0.4463 0.2135 0.1114 0.0632     0.2733      0.9710      0.522      0.866     17.3              0.2901
+M2 gbm 150 iter, lr 0.10, 15 leaves        0.2907 0.4316 0.3551 0.2774 0.0986     0.3018      0.9761      0.507      0.878     17.6              0.3239
+M2 gbm 300 iter, lr 0.05, 15 leaves        0.2990 0.4353 0.3306 0.3245 0.1056     0.2943      0.9773      0.511      0.893     17.9              0.3165
+M2 gbm 300 iter, lr 0.05, 31 leaves        0.2992 0.4328 0.3307 0.3295 0.1036     0.2942      0.9748      0.506      0.884     17.7              0.3163
+
+selected by the fixed rule (highest mean fold AP among M1/M2): M2 gbm 300 iter, lr 0.05, 31 leaves
+
+== Cost-optimal threshold chosen on out-of-fold predictions, for several kappa (kappa 0.02 is the main case) ==
+ kappa                               model  alarm_rate_%  recall_rows  recall_banks  cost_saving_vs_no_alarm  cost_bn_USD  no_alarm_cost_bn_USD
+ 0.005             B1 logistic, 3 features          5.96        0.953         0.981                    0.944         6.26                111.91
+ 0.005 M2 gbm 300 iter, lr 0.05, 31 leaves         15.27        0.968         0.982                    0.853        16.44                111.91
+ 0.010             B1 logistic, 3 features          4.97        0.941         0.978                    0.913         9.70                111.91
+ 0.010 M2 gbm 300 iter, lr 0.05, 31 leaves          9.09        0.944         0.971                    0.794        23.08                111.91
+ 0.020             B1 logistic, 3 features          4.58        0.933         0.975                    0.860        15.61                111.91
+ 0.020 M2 gbm 300 iter, lr 0.05, 31 leaves          6.33        0.914         0.957                    0.694        34.29                111.91
+ 0.050             B1 logistic, 3 features          3.14        0.882         0.956                    0.742        28.90                111.91
+ 0.050 M2 gbm 300 iter, lr 0.05, 31 leaves          3.37        0.826         0.903                    0.545        50.94                111.91
+ 0.100             B1 logistic, 3 features          2.80        0.859         0.947                    0.587        46.23                111.91
+ 0.100 M2 gbm 300 iter, lr 0.05, 31 leaves          1.74        0.689         0.824                    0.398        67.41                111.91
+
+main case: cost without any alarm 111.91 bn USD; alarming every bank-quarter 276.41 bn USD (the alarm model must beat the smaller of the two)
+
+built in 198 s
