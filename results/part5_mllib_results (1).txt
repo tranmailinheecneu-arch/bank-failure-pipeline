@@ -1,0 +1,5 @@
+train rows 704,362 (positive 8,488); validation rows 440,235 (positive 163); validation base rate 0.0370%
+logistic regression (weighted): area under PR 0.0400 | area under ROC 0.8810 | 90 s
+gradient-boosted trees (30 iterations, depth 4): area under PR 0.0826 | area under ROC 0.8963 | 116 s
+Spark's areaUnderPR uses trapezoidal interpolation: close to, but not identical with, scikit-learn's Average Precision.
+Compare with the fold-4 results of the same model families in results/part5_validation.txt (AP_f4, pooled_AUC).
