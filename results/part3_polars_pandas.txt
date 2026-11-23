@@ -1,20 +1,20 @@
 machine: 12 logical CPUs, 8.2 GB RAM | polars 2.1.0 | pandas 3.1.1 | python 3.13.7
 Polars plan saved (results/part3_polars_plan.txt); columns read by the optimised scan: 12 of 61
 
-running pandas (2 timed runs + 1 warm-up; pandas can take several minutes) ...
-  best 5.73 s | median 6.16 s | peak memory above baseline 1253 MB | rows 1,681,431
+running pandas (5 timed runs + 1 warm-up; pandas can take several minutes) ...
+  best 5.46 s | median 11.02 s | peak memory above baseline 1265 MB | rows 1,681,431
 
 running polars_eager (5 timed runs + 1 warm-up; pandas can take several minutes) ...
-  best 1.96 s | median 2.36 s | peak memory above baseline 1991 MB | rows 1,681,431
+  best 2.01 s | median 2.51 s | peak memory above baseline 1784 MB | rows 1,681,431
 
 running polars_lazy (5 timed runs + 1 warm-up; pandas can take several minutes) ...
-  best 2.01 s | median 2.65 s | peak memory above baseline 2443 MB | rows 1,681,431
+  best 2.23 s | median 2.59 s | peak memory above baseline 1703 MB | rows 1,681,431
 
 == Benchmark (same 18 features, same input) ==
       engine  timed_runs  best_s  median_s  peak_MB_above_baseline  speedup_vs_pandas
-      pandas           2   5.731     6.156                    1253                1.0
-polars_eager           5   1.964     2.363                    1991                2.9
- polars_lazy           5   2.009     2.649                    2443                2.9
+      pandas           5   5.460    11.020                    1265                1.0
+polars_eager           5   2.007     2.513                    1784                2.7
+ polars_lazy           5   2.233     2.591                    1703                2.4
 
 == Equivalence: Polars lazy vs pandas ==
 same shape: True (1,681,431 rows, 18 features) | same (CERT, qidx) keys: True

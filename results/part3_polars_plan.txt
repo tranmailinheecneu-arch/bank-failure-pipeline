@@ -58,7 +58,7 @@ SORT BY [col("CERT"), col("qidx")]
     LEFT JOIN:
     LEFT PLAN ON: [col("CERT"), col("qidx")]
       simple π 14/14 ["CERT", "qidx", "eq_assets", ... 11 other columns]
-        CACHE[id: 2991ef5c-1a34-477f-9051-b5377680877f]
+        CACHE[id: a9d97d2c-4139-4b35-b45d-5f98bdf4c087]
           SORT BY [col("CERT"), col("qidx")]
             simple π 15/15 ["CERT", "qidx", "eq_assets", ... 12 other columns]
                WITH_COLUMNS:
@@ -90,5 +90,5 @@ SORT BY [col("CERT"), col("qidx")]
         [col("ROAQ").mean().alias("roa_q_mean4"), col("ROAQ").std().alias("roa_q_std4"), col("ROAQ").count().alias("roa_q_n4")] BY [col("CERT")]
         FROM
         simple π 3/3 ["CERT", "ROAQ", "qidx"]
-          CACHE[id: 2991ef5c-1a34-477f-9051-b5377680877f]
+          CACHE[id: a9d97d2c-4139-4b35-b45d-5f98bdf4c087]
     END LEFT JOIN

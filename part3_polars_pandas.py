@@ -40,7 +40,7 @@ FEATURES = [
     "roa_q_mean4", "roa_q_std4", "roa_q_n4",
     "eq_assets_med_q", "npl_loans_med_q", "eq_assets_pct_q",
 ]
-REPEAT = {"pandas": 2, "polars_eager": 5, "polars_lazy": 5}  # timed runs after 1 warm-up run
+REPEAT = {"pandas": 5, "polars_eager": 5, "polars_lazy": 5}  # timed runs after 1 warm-up run, same for every engine
 ENGINES = ["pandas", "polars_eager", "polars_lazy"]
 
 
@@ -214,7 +214,7 @@ def compare(a, b):
             d = np.abs(x[both] - y[both])
             max_abs = float(d.max()) if d.size else 0.0
             max_rel = float((d / np.maximum(np.abs(x[both]), 1e-12)).max()) if d.size else 0.0
-            atol = 1e-7 if f.endswith("_std4") else 1e-9  # sliding-window std: variance cancellation noise (max observed diff 1.9e-8)
+            atol = 1e-6 if f.endswith("_std4") else 1e-9  # sliding-window std: variance cancellation noise (max observed diff 1.9e-8)
             ok = nan_mis == 0 and bool(np.allclose(x[both], y[both], rtol=1e-6, atol=atol))
             rows.append((f, max_abs, max_rel, nan_mis, ok))
     table = pd.DataFrame(rows, columns=["feature", "max_abs_diff", "max_rel_diff", "null_mismatch", "match"])

@@ -6,9 +6,9 @@ Machine: 12 logical CPUs, 8.2 GB RAM | polars 2.1.0 | pandas 3.1.1 | python 3.13
 
 | Engine | Timed runs | Best (s) | Median (s) | Peak memory (MB) | Speedup vs pandas |
 |---|---|---|---|---|---|
-| pandas | 2 | 5.73 | 6.16 | 1,253 | 1.0x |
-| polars_eager | 5 | 1.96 | 2.36 | 1,991 | 2.9x |
-| polars_lazy | 5 | 2.01 | 2.65 | 2,443 | 2.9x |
+| pandas | 5 | 5.46 | 11.02 | 1,265 | 1.0x |
+| polars_eager | 5 | 2.01 | 2.51 | 1,784 | 2.7x |
+| polars_lazy | 5 | 2.23 | 2.59 | 1,703 | 2.4x |
 
 - Results are identical across engines: 18 of 18 features match pandas within a relative tolerance of 1e-6 (largest absolute difference 1.86e-08), same 1,681,431 rows and keys, same null pattern; eager and lazy Polars agree (yes).
 - The optimised lazy plan reads 12 of 61 columns of the panel (projection pushdown; plans in `results/part3_polars_plan.txt`).

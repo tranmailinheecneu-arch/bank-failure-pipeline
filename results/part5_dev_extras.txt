@@ -1,0 +1,55 @@
+development rows: 1,193,702 (qidx <= 8027) | positive y 8,678 | positive y_alt 11,944
+
+== Reproduction check: fold AP of y against Table 12 ==
+B1: reproduced 0.4505 0.2249 0.1108 0.0875 | Table 12 0.4505 0.2249 0.1108 0.0875 | max abs difference 0.0000
+M2: reproduced 0.4276 0.3288 0.3259 0.0508 | Table 12 0.4328 0.3307 0.3295 0.1036 | max abs difference 0.0528
+(a difference above 0.01 means the refit differs from the committed models: change B1_CLASS_WEIGHT / M2_CLASS_WEIGHT / M2_EARLY_STOPPING at the top, or send bank_common.py)
+
+== D. Implied kappa (unit cost per missed positive row, kappa per false alarm; pooled OOF) ==
+optimal alarm rate (%) by kappa:
+  kappa 0.005 : B1  6.30 | M2  8.82
+  kappa 0.01  : B1  4.87 | M2  6.44
+  kappa 0.02  : B1  4.07 | M2  4.95
+  kappa 0.05  : B1  2.80 | M2  2.74
+  kappa 0.1   : B1  1.83 | M2  1.82
+  B1: a supervisor capacity of 1% of bank-quarters is optimal at kappa = 0.3036
+  B1: a supervisor capacity of 2% of bank-quarters is optimal at kappa = 0.0967
+  B1: a supervisor capacity of 5% of bank-quarters is optimal at kappa = 0.0095
+  B1: a supervisor capacity of 10% of bank-quarters is optimal at kappa = 0.0012
+  M2: a supervisor capacity of 1% of bank-quarters is optimal at kappa = 0.2403
+  M2: a supervisor capacity of 2% of bank-quarters is optimal at kappa = 0.0875
+  M2: a supervisor capacity of 5% of bank-quarters is optimal at kappa = 0.0155
+  M2: a supervisor capacity of 10% of bank-quarters is optimal at kappa = 0.0042
+note: unit costs ignore the asset weighting of Part 5.3, so the rates differ from Table C1; the point is the mapping capacity <-> kappa.
+
+== E. Calibration (Brier = mean squared error of the probability; lower is better) ==
+B1: pooled Brier 0.02413 | per fold: mean predicted vs observed rate
+   fold 1: mean predicted 0.1986 | observed 0.0244
+   fold 2: mean predicted 0.1518 | observed 0.0146
+   fold 3: mean predicted 0.0804 | observed 0.0022
+   fold 4: mean predicted 0.0525 | observed 0.0004
+   fold 2: Brier raw 0.04913 -> isotonic fitted on folds < 2: 0.01303
+   fold 3: Brier raw 0.01820 -> isotonic fitted on folds < 3: 0.00239
+   fold 4: Brier raw 0.00678 -> isotonic fitted on folds < 4: 0.00042
+M2: pooled Brier 0.00550 | per fold: mean predicted vs observed rate
+   fold 1: mean predicted 0.0081 | observed 0.0244
+   fold 2: mean predicted 0.0185 | observed 0.0146
+   fold 3: mean predicted 0.0065 | observed 0.0022
+   fold 4: mean predicted 0.0005 | observed 0.0004
+   fold 2: Brier raw 0.01280 -> isotonic fitted on folds < 2: 0.01420
+   fold 3: Brier raw 0.00278 -> isotonic fitted on folds < 3: 0.00338
+   fold 4: Brier raw 0.00040 -> isotonic fitted on folds < 4: 0.00039
+
+== F. Bank-level bootstrap (200 resamples of banks; AP(M2) - AP(B1)) ==
+  pooled AP: observed difference +0.0103 | 95% interval [-0.0058, +0.0263] | share of resamples with M2 > B1: 0.90
+  mean fold AP: observed difference +0.0648 | 95% interval [+0.0468, +0.0823] | share of resamples with M2 > B1: 1.00
+  an interval that contains 0 means the larger model is not clearly better than the three-feature baseline.
+
+== G. Label noise: AP against the main label y and the sensitivity label y_alt (development folds) ==
+fold | positives y | positives y_alt | B0 AP(y) / AP(y_alt) | B1 AP(y) / AP(y_alt) | M2 AP(y) / AP(y_alt)
+1 | 3226 | 3911 | 0.256 / 0.364 | 0.451 / 0.645 | 0.428 / 0.489
+2 | 1790 | 2933 | 0.106 / 0.296 | 0.225 / 0.668 | 0.329 / 0.692
+3 | 473 | 849 | 0.041 / 0.171 | 0.111 / 0.460 | 0.326 / 0.330
+4 | 163 | 163 | 0.013 / 0.013 | 0.088 / 0.088 | 0.051 / 0.051
+pooled | 5652 | 7856 | 0.136 / 0.257 | 0.287 / 0.589 | 0.297 / 0.469
+pooled ranking of the models by AP: y ['p_m2', 'p_b1', 'p_b0'] | y_alt ['p_b1', 'p_m2', 'p_b0'] | same order: False
