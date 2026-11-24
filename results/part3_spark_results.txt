@@ -73,14 +73,14 @@ BroadcastHashJoin      1
 ObjectHashAggregate    2
 
 == Time on the same Colab machine (best / median of 3, after 1 warm-up) ==
-polars lazy : 3.18 s / 3.67 s
-spark local : 58.60 s / 61.67 s  (output not collected to the driver)
-polars is 18.4x faster than Spark on this data size
+polars lazy : 2.89 s / 3.02 s
+spark local : 52.51 s / 55.37 s  (output not collected to the driver)
+polars is 18.2x faster than Spark on this data size
 
 == Scaling on Colab (1 run per size, after the warm-up above) ==
 engine | size | rows | seconds
-polars | 1x | 1,681,431 | 5.2
-polars | 2x | 3,362,862 | 7.1
-spark  | 1x | 1,681,431 | 60.5
-spark  | 2x | 3,362,862 | 132.8
-spark  | 4x | 6,725,724 | 244.2
+polars | 1x | 1,681,431 | 3.8
+polars | 2x | 3,362,862 | 8.2
+spark  | 1x | 1,681,431 | 55.4
+spark  | 2x | 3,362,862 | 120.6
+spark  | 4x | 6,725,724 | 244.3
