@@ -16,11 +16,11 @@ pip install -r requirements.txt
 ## Repository layout
 - `fdic_download_starter.py`: original download script provided by the instructor (unchanged, kept for reference)
 - `download_fdic.py`: my modified copy of the starter script (extended field list, see below)
-- `part1_storage_benchmark.py`, `build_storage.py`, `part1_extra_checks.py`: Part 1
+- `part1_storage_benchmark.py`, `build_storage.py`, `part1_extra_checks.py`, `part1_polars_csv_check.py`: Part 1
 - `part2_dq_report.py`, `part2_exits.py`, `part2_clean_panel.py`, `part2_zero_pattern.py`: Part 2
 - `part3_polars_pandas.py`, `part3_check_std.py`, `part3_make_spark_input.py`, `part3_scaling.py`, `notebooks/part3_spark.ipynb`: Part 3
 - `bank_common.py`, `part4_features.py`: Part 4
-- bank_models.py, part5_validation.py, part5_test.py, part5_export_mllib.py, notebooks/part5_mllib.ipynb: Part 5
+- `bank_models.py`, `part5_validation.py`, `part5_test.py`, `part5_export_mllib.py`, `notebooks/part5_mllib.ipynb`, `part5_dev_extras.py`: Part 5
 - `results/`: small result files (tables, completeness evidence)
 - `data_raw/`, `data_storage/`: generated locally, not committed
 
@@ -65,7 +65,7 @@ Storage schemes compared (`results/part1_storage.txt`):
 - Trade-off: E is 1.5 MB larger than D and slower for a 4-column scan (0.036 s vs 0.024 s). It was chosen because filtering by period is the main access pattern for a time-ordered panel, and its full read is also faster (0.275 s vs 0.318 s).
 - Stored schema (`results/part1_schema_table.txt`): of 51 columns, 39 are Float64, 6 ratio columns are Float32 (NIMY, ROAQ, ROA, ROE, RBC1AAJ, RBCRWAJ), 4 are Int64 (CERT, ASSET, FREPP, P3ASSET), STNAME is Categorical and REPDTE is String.
 - Float32 check (`results/part1_float32_check.txt`): maximum relative error 6e-8 on the six ratio columns (largest absolute error 0.0138, on ROE, whose maximum is 354,657.8), no null mismatches. Money columns (ASSET, DEP) stay at full precision.
-- Engine comparison (`results/part1_fair_benchmark.txt`, seconds, read all / read 4 columns): CSV pandas 1.199 / 1.067, CSV Polars 17.509 / 19.929, Parquet pandas 0.639 / 0.044, Parquet Polars 0.304 / 0.031. On Parquet, Polars is 2.1x faster than pandas for a full read and 1.4x for a 4-column read. For pandas, Parquet is 1.9x faster than CSV for a full read and 24x faster for a 4-column read.
+- Polars read the CSV in 17.5 s in the first benchmark because it inferred the schema from all rows; `results/part1_polars_csv_check.txt` confirms it: the same 616 MB CSV takes 17.3 s with inference over all rows, 1.10 s over 10,000 rows and 0.648 s with an explicit schema (four columns: 16.4, 0.43 and 0.33 s). With an explicit schema Polars reads the CSV 1.9 times faster than pandas (0.648 against 1.199 s); Parquet is still 2.1 times faster for a full read (0.304 s) and 10.7 times for four columns (0.031 s).
 - Each timing is the best of 3 repeats within one script run on one laptop and varies between runs (pandas CSV full read: 1.390 s in the storage benchmark, 1.199 s here). Polars was the slowest on CSV (17.5 s); a likely cause is the full-file schema inference (`infer_schema_length=None`) used in the benchmark, which was not tested separately, so conclusions rely on the Parquet rows.
 - Completeness: the per-year row counts of the stored panel sum to 1,682,616, equal to the sum of the API totals (e.g. 2026: 8,666 rows = 4,353 + 4,313).
 
@@ -127,7 +127,6 @@ Every one of the 24,064 banks in the panel is assigned one exit class (last quar
 | survivor_listed_in_failures | 7 | 0.03% |
 | failure_date_before_first_report | 2 | 0.01% |
 
-- Failures table: 4,117 rows; 488 have no usable CERT (0 dated 1984 or later) and 344 linked banks never appear in the panel (22 of them dated 1984 or later; the rest failed before the panel starts).
 - The Failures table has 4,117 rows: 488 have no usable CERT (all dated before 1984), 344 linked banks never appear in the panel (22 dated 1984 or later), and 400 banks have only an ASSISTANCE event (393 later left the panel, 7 still report). The table does not separate open-bank assistance from assisted mergers (242 exits carry the change code "Merger - Assisted"), but 37 banks were assisted and failed later, so some kept operating. The main label therefore counts only RESTYPE = FAILURE; the sensitivity label y_alt adds the assistance banks and the 865 failure-like exits.
 - Banks with a FAILURE event in the panel: 2,841 (2,662 clean failures, 177 that kept reporting after FAILDATE, 2 with FAILDATE before their first report).
 - Failures by year of last report peak in 1989 (416 banks); other exits peak in 1994 (840 banks); 2026 covers the first half-year only (`results/fig_part2_exits_by_year.png`).
@@ -176,14 +175,14 @@ Machine: 12 logical CPUs, 8.2 GB RAM, polars 2.1.0, pandas 3.1.1, Python 3.13.7.
 
 | Engine | Timed runs | Best (s) | Median (s) | Peak memory (MB) | Speedup vs pandas (best / median) |
 |---|---|---|---|---|---|
-| pandas | 5 | 5.73 | 6.16 | 1,253 | 1.0x |
-| polars_eager | 5 | 1.96 | 2.36 | 1,991 | 2.9x / 2.6x |
-| polars_lazy | 5 | 2.01 | 2.65 | 2,443 | 2.9x / 2.3x |
+| pandas | 5 | 5.46 | 11.02 | 1,265 | 1.0x |
+| polars_eager | 5 | 2.01 | 2.51 | 1,784 | 2.7x / 4.4x |
+| polars_lazy | 5 | 2.23 | 2.59 | 1,703 | 2.4x / 4.3x |
 
-- Equivalence: 18 of 18 features match pandas (relative tolerance 1e-6, absolute tolerance 1e-9, and 1e-6 for the rolling standard deviation), same 1,681,431 rows and keys, same null pattern; eager and lazy Polars are identical.
-- The only difference is `roa_q_std4`: 5 of 1,652,719 comparable rows differ by more than 1e-9 (largest 1.86e-8), none by more than 1e-6. In the worst row (CERT 28535) the four ROAQ values in the window are all 0.69, so the true standard deviation is exactly 0: Polars returns 0 and pandas leaves a rounding residue.
-- Polars is about 2.3-2.9x faster than pandas but uses more memory (1.6x for eager, 1.9x for lazy), because it runs multithreaded and keeps more intermediate data at once.
-- Lazy is not faster than eager here (2.01 s vs 1.96 s) because the eager code already reads only the 12 needed columns. The lazy engine matters when the column choice is not hand-written, and for filters (Part 4).
+- Equivalence: 18 of 18 features match pandas (relative tolerance 1e-6, absolute 1e-9, and 1e-6 for the rolling standard deviation), same 1,681,431 rows, keys and null pattern; eager and lazy Polars are identical. The only difference is `roa_q_std4`: 5 of 1,652,719 comparable rows differ by more than 1e-9 (largest 1.86e-8), none by more than 1e-6; in the worst row (CERT 28535) the four ROAQ values in the window are all 0.69, so the true standard deviation is exactly 0: Polars returns 0 and pandas leaves a rounding residue.
+- Every engine has one warm-up and five timed runs. Polars is 2.4 to 2.7 times faster than pandas by best time and 4.3 to 4.4 times by median; the median of pandas (11.0 s) is twice its best time (5.5 s), so pandas varies a lot between runs (not investigated). Polars uses 1.3 to 1.4 times the memory of pandas. Lazy is not faster than eager (2.23 against 2.01 s) because the eager code already reads only the 12 needed columns. All timings come from one laptop and vary between runs.
+- Peak memory: Polars uses 1.3 to 1.4 times the memory of pandas in this run (1,784 and 1,703 MB against 1,265 MB). The earlier run gave 1,991 MB (eager) and 2,443 MB (lazy) for the same pipeline, so peak memory varies by about 40% between runs.
+- Lazy is not faster than eager (2.23 against 2.01 s; 2.01 against 1.96 s in the earlier run) because the eager code already reads only the 12 needed columns. The lazy engine matters when the column choice is not written by hand, and for filters (Part 4).
 - Query plan (`results/part3_polars_plan.txt`): the unoptimised plan scans the panel 4 times with all 61 columns (244 column reads); the optimised plan scans it twice, reading 12 and 7 of 61 columns (19 column reads), computes the shared conditions `ASSET > 0` and `LNLSGR > 0` once, and caches the shared ratio-and-lag sub-plan so that the rolling window reuses it. No filter appears in the query, so predicate pushdown does not apply yet.
 - Every engine has one warm-up run and five timed runs; the timings are the best and the median of the five runs on one laptop and vary between runs.
 
@@ -192,9 +191,9 @@ Machine: 12 logical CPUs, 8.2 GB RAM, polars 2.1.0, pandas 3.1.1, Python 3.13.7.
 The same 18 features are rebuilt in PySpark 4.0.1 (local mode, Google Colab: 2 vCPU, 13.6 GB RAM, Polars 1.35.2, Python 3.13, adaptive query execution on, 16 shuffle partitions) and compared with Polars on the same input file (12 columns of the clean panel, 1,681,431 rows). Spark local mode is not a cluster: it measures the engine, not the speed-up from adding machines.
 
 - Equivalence: 18 of 18 features match Polars (same rows and keys). The first comparison gave 17 of 18 with a 1e-7 tolerance for `roa_q_std4`; the diagnosis found 15 of 1,652,719 rows above 1e-7 and none above 1e-6 (largest 6.74e-7). In the worst row (CERT 27229) the four ROAQ values of the window are all 0.0, so the exact standard deviation (NumPy, two-pass) is 0: Spark returns 0 and Polars 6.74e-7, and Spark is closer to the exact value in all 15 rows. The tolerance was then set to 1e-6 for this feature (1e-9 for the others). The rounding residue depends on engine, version and the values before the window: on the laptop run (Polars 2.1.0) it was pandas that left a residue (1.9e-8). `log_asset` differs by 3.6e-15 (different `log` implementations).
-- Plan (formatted physical plan before execution, so adaptive execution may change partition counts at run time): 6 parquet scans reading 12, 7, 6, 2, 4 and 2 of the 12 columns (column pruning; one scan also carries a pushed `IsNotNull(CERT)` filter), 12 shuffles (`Exchange`), 12 sorts, 4 window operators, 4 sort-merge joins, 1 broadcast hash join (the 170-row median table) and 2 object hash aggregates (exact median). The first "Plan facts" block in the results file counts every node twice (tree plus detail section); the second block, "each node counted once", is the correct one.
+- Plan (formatted physical plan before execution, so adaptive execution may change partition counts at run time): 6 parquet scans reading 12, 7, 6, 2, 4 and 2 of the 12 columns (column pruning; one scan also carries a pushed IsNotNull filter on five of the six scans, 12 shuffles (`Exchange`), 12 sorts, 4 window operators, 4 sort-merge joins, 1 broadcast hash join (the 170-row median table) and 2 object hash aggregates (exact median). The first "Plan facts" block in the results file counts every node twice (tree plus detail section); the second block, "each node counted once", is the correct one.
 - Why 6 scans against 2 in Polars: the sub-plan with ratios and the 4-quarter lag is used by three branches (main result, medians, ranks); in this plan Spark recomputes it for each branch (no `ReusedExchange` node), while Polars caches it (`CACHE` node) and scans twice. The cost of Spark is mainly the 12 shuffles and sorts (hash partitioning on `CERT, qidx`) and JVM scheduling overhead.
-- Time on the same Colab machine (best / median of 3 after one warm-up): Polars lazy 3.18 / 3.67 s, Spark 58.60 / 61.67 s, so Polars is 18.4x faster by best time. Spark's output is not collected to the driver, while Polars materialises its result, so the comparison slightly favours Spark.
+- Time on the same Colab machine (best / median of three after one warm-up): Polars lazy 2.89 / 3.02 s, Spark 52.51 / 55.37 s, so Polars is 18.2 times faster. Spark's output is not collected to the driver, while Polars materialises its result, so the comparison slightly favours Spark.
 
 ### Part 3.3 When is a cluster justified? (`results/part3_spark_results.txt`, `results/part3_scaling.txt`)
 
@@ -202,20 +201,26 @@ The panel is replicated k times (`CERT + i * 10,000,000`, so each copy is an ind
 
 | Colab (2 vCPU), one run per size | Rows | Polars (s) | Spark (s) | Spark s per million rows |
 |---|---|---|---|---|
-| 1x | 1,681,431 | 5.2 | 60.5 | 36.0 |
-| 2x | 3,362,862 | 7.1 | 132.8 | 39.5 |
-| 4x | 6,725,724 | not run | 244.2 | 36.3 |
+| 1x | 1,681,431 | 3.8 | 55.4 | 33.0 |
+| 2x | 3,362,862 | 8.2 | 120.6 | 35.9 |
+| 4x | 6,725,724 | not run | 244.3 | 36.3 |
 
-| Laptop (12 CPUs, 8.2 GB RAM), Polars lazy | Rows | Best of 2 (s) | Peak memory (MB) | MB per million rows |
-|---|---|---|---|---|
-| 1x | 1,681,431 | 2.85 | 1,165 | 693 |
-| 2x | 3,362,862 | 5.46 | 2,127 | 633 |
-| 3x | 5,044,293 | 6.22 | 2,428 | 481 |
+Laptop (12 CPUs, 8.2 GB), best of 2 runs, memory guard 5 GB (`results/part3_scaling_v2.txt`):
 
-- The 1x Polars time here (5.2 s) differs from the 3.18 s of Part 3.2: this loop times a single run of the replicated query instead of the best of three (cause not isolated).
-- Spark time grows about linearly with the data (36-40 s per million rows); Polars grows less than linearly because fixed costs are shared (3.09 then 2.11 s per million rows on Colab).
-- Memory is not linear in the data (693 to 481 MB per million rows), and the same pipeline peaked at 2,443 MB in Part 3.1 against 1,165 MB here (different query structure and number of runs; not explained). The 5 GB guard never triggered, so the real single-machine limit was not reached. Extrapolating 481 to 1,453 MB per million rows, 80% of 8.2 GB holds roughly 4.5 to 13.6 million rows, i.e. 3x to 8x the current panel (an extrapolation, not a measurement).
-- Even if Spark scaled perfectly with cores and shuffles over a network were free, it would need about 18x more cores than Polars to tie on this workload (a calculation under an optimistic assumption, not a measurement).
+| Engine mode | Size | Rows | Best time (s) | Peak memory (MB) | MB per million rows |
+|---|---|---|---|---|---|
+| in-memory | 1x | 1,681,431 | 2.14 | 1,678 | 998 |
+| in-memory | 2x | 3,362,862 | 3.45 | 2,104 | 626 |
+| in-memory | 4x | 6,725,724 | 11.85 | 1,990 | 296 |
+| in-memory | 6x | 10,088,586 | 13.96 | 3,130 | 310 |
+| streaming | 1x | 1,681,431 | 1.45 | 2,000 | 1,189 |
+| streaming | 2x | 3,362,862 | 2.81 | 3,247 | 966 |
+| streaming | 4x | 6,725,724 | 6.33 | 3,446 | 512 |
+| streaming | 6x | 10,088,586 | 18.91 | 3,100 | 307 |
+
+- Spark in local mode is 15 to 18 times slower than Polars and grows linearly (33 to 36 s per million rows). One run per size cannot separate the shape of the Polars curve from noise.
+- A panel 6 times larger (10.1 million rows) needed 3.1 GB at its peak (38% of the 8.2 GB RAM) and the 5 GB guard was never reached, so the single-machine limit is above 6 times the panel. Extrapolating the slope between 4x and 6x (about 340 MB per extra million rows) gives about 20 million rows (12x) at 80% of the RAM; this is a rough extrapolation, not a measurement.
+- The streaming engine did not lower the peak memory (3,100 against 3,130 MB at 6x) and was slower at 6x (18.9 against 14.0 s); which operations ran in the streaming engine was not checked.
 - Conclusion: for a 1.7 million row panel (about 200 MB of compressed Parquet, 3 seconds on one machine) a cluster is not justified. It would be justified when the data no longer fits in one machine's memory (here beyond roughly 3x to 8x the panel, e.g. loan-level data), when a time limit cannot be met on one machine, when the work splits by independent keys without cross-sectional shuffles, or when the data already lives in distributed storage. 
 
 ## Part 4: Feature pipeline
@@ -382,10 +387,69 @@ A short MLlib demo on fold 4 of the purged validation (Google Colab, 2 vCPU, pys
 - Spark's `areaUnderPR` uses trapezoidal interpolation, so it is close to but not identical with scikit-learn's Average Precision. The ROC areas are not comparable with the `pooled_AUC` column of Part 5.1, which pools the four folds (the note at the end of the results file refers to that column; only the AP of fold 4 is comparable).
 - With 163 positive rows from 49 banks the fold-4 figures are noisy; a difference of 0.02 in AP should not be over-interpreted.
 
+### Part 5.4 development-period robustness analyses (`results/part5_dev_extras.txt`)
+
+Run after the test evaluation; it reads only development rows, refits the committed models and changes no committed choice. It stops unless the out-of-fold AP of B1 and of the selected model reproduces Table 12 to four decimals (it does, difference 0.0000).
+
+- **Implied kappa (asset-weighted).** A capacity of 5% of bank-quarters is cost-optimal at kappa 0.0106 (B1) and 0.0328 (selected); the main kappa of 0.02 lies between them (alarm rates 4.58% and 6.33%). Capacity 2%: 0.1663 and 0.0964; capacity 10%: 0.0007 and 0.0066. This replaces one assumption by another that is easier to state; it does not make the cost observable.
+- **Calibration.** B1 (balanced class weight) outputs scores: mean predicted rate 0.199, 0.152, 0.080, 0.053 against observed 0.0244, 0.0146, 0.0022, 0.0004; isotonic recalibration fitted on earlier folds lowers its Brier score from 0.0491 to 0.0130, from 0.0182 to 0.0024 and from 0.00678 to 0.00042 (folds 2 to 4). For the selected model (no class weight) the same recalibration does not help (Brier 0.01351 to 0.01408, 0.00263 to 0.00334, 0.00035 to 0.00036): the base rate falls from 2.4% to 0.04% between folds, so a mapping learned in one regime does not transfer.
+- **Is the larger model clearly better?** Bank-level bootstrap (500 resamples): selected minus B1 pooled AP +0.0092, 95% interval [-0.0070, +0.0248] (contains 0); mean fold AP +0.0793, interval [+0.0594, +0.1005] (excludes 0; the selection rule used this metric). The bootstrap's own weighted AP differs from scikit-learn's by 0.0017 on B1.
+- **Label noise.** Against `y_alt` (7,856 positives instead of 5,652) the pooled AP is B1 0.589 and selected 0.522 (against `y`: 0.287 and 0.294), so the pooled order of the two changes; by mean fold AP against `y_alt`, B1 (0.465) is ahead of the selected model (0.430). On the test period the order is unchanged (0.543 against 0.563).
+
+development rows: 1,193,702 (1984Q1 to 2006Q4); positive y 8,678; positive y_alt 11,944
+
+== Reproduction check against Table 12 (fold AP of y) ==
+B1: reproduced [0.4505, 0.2249, 0.1108, 0.0875] | Table 12 [0.4505, 0.2249, 0.1108, 0.0875] | max abs difference 0.0000
+SEL: reproduced [0.4328, 0.3307, 0.3295, 0.1036] | Table 12 [0.4328, 0.3307, 0.3295, 0.1036] | max abs difference 0.0000
+reproduction OK: the models of this script are the committed models
+
+== A. Implied kappa: kappa at which the cost-optimal alarm rate equals a supervisor capacity (pooled out-of-fold) ==
+capacity B1 asset-weighted B1 unit selected asset-weighted selected unit
+      1%            0.4320  0.2910                  0.2257        0.2729
+      2%            0.1663  0.0908                  0.0964        0.0829
+      5%            0.0106  0.0093                  0.0328        0.0175
+     10%            0.0007  0.0012                  0.0066        0.0041
+optimal alarm rate by kappa (asset-weighted; should match the cost table of Part 5.1):
+ kappa  B1 alarm % (asset-weighted)  selected alarm % (asset-weighted)
+ 0.005                         5.96                              15.27
+ 0.010                         4.97                               9.09
+ 0.020                         4.58                               6.33
+ 0.050                         3.14                               3.37
+ 0.100                         2.80                               1.74
+
+== B. Calibration (Brier = mean squared error of the probability, lower is better) ==
+B1: pooled Brier 0.02413
+  fold 1: mean predicted 0.1986 | observed 0.0244
+  fold 2: mean predicted 0.1518 | observed 0.0146 | Brier raw 0.04913 -> isotonic fitted on folds < 2: 0.01303
+  fold 3: mean predicted 0.0804 | observed 0.0022 | Brier raw 0.01820 -> isotonic fitted on folds < 3: 0.00239
+  fold 4: mean predicted 0.0525 | observed 0.0004 | Brier raw 0.00678 -> isotonic fitted on folds < 4: 0.00042
+selected: pooled Brier 0.00541
+  fold 1: mean predicted 0.0085 | observed 0.0244
+  fold 2: mean predicted 0.0181 | observed 0.0146 | Brier raw 0.01351 -> isotonic fitted on folds < 2: 0.01408
+  fold 3: mean predicted 0.0061 | observed 0.0022 | Brier raw 0.00263 -> isotonic fitted on folds < 3: 0.00334
+  fold 4: mean predicted 0.0003 | observed 0.0004 | Brier raw 0.00035 -> isotonic fitted on folds < 4: 0.00036
+
+== C. Bank-level bootstrap (resample banks with replacement) ==
+own weighted AP against scikit-learn on B1 (pooled): difference 0.00174
+  pooled AP: observed difference +0.0092 | 95% interval [-0.0070, +0.0248] | share of resamples with selected > B1: 0.87
+  mean fold AP: observed difference +0.0793 | 95% interval [+0.0594, +0.1005] | share of resamples with selected > B1: 1.00
+  (500 resamples of 23,622 banks; an interval that contains 0 means the larger model is not clearly better than B1)
+
+== D. Label noise: Average Precision against the main label y and the sensitivity label y_alt (models trained on y) ==
+  fold  positives y  positives y_alt B0 AP(y) / AP(y_alt) B1 AP(y) / AP(y_alt) selected AP(y) / AP(y_alt)
+     1         3226             3911        0.256 / 0.364        0.451 / 0.645              0.433 / 0.509
+     2         1790             2933        0.106 / 0.296        0.225 / 0.668              0.331 / 0.737
+     3          473              849        0.041 / 0.171        0.111 / 0.460              0.330 / 0.369
+     4          163              163        0.013 / 0.013        0.088 / 0.088              0.104 / 0.104
+pooled         5652             7856        0.136 / 0.257        0.287 / 0.589              0.294 / 0.522
+pooled ranking by AP against y: ['M2', 'B1', 'B0'] | against y_alt: ['B1', 'M2', 'B0'] | same order: False
+
+built in 103 s
+
 ## Sources
 - `fdic_download_starter.py`: starter script provided by the course instructor (original, unchanged).
 - `download_fdic.py`: copy of the starter script, modified by me only in the field list `FIN_FIELDS` and the default output folder.
 - FDIC BankFind API and field dictionary: https://api.fdic.gov/banks/docs/ (failures, institutions and history endpoints).
 - Course materials: Lecture 3 "Financial Time Series" (07_L03_TimeSeries_ML) for the point-in-time rule and the available-timestamp idea; Lessons 12-14 (visualization) for the figure design.
 - Apache Spark / PySpark installation documentation (Java 17 or later is required): https://spark.apache.org/docs/latest/api/python/getting_started/install.html
-- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence, Polars/pandas/Spark benchmarks, Spark notebook and scaling experiment), feature pipeline (Part 4), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content, modelling and validation (Part 5)
+- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence, Polars, pandas and Spark benchmarks, Spark notebook and scaling experiment, feature pipeline, validation, test and MLlib scripts, development-period robustness analyses), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.

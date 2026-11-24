@@ -1,4 +1,4 @@
 file: A_panel.csv (616 MB); best of 3, seconds
-infer schema from all rows: read all 20.501 | read 4 columns 19.828
-infer schema from 10,000 rows: read all 0.777 | read 4 columns 0.388
-explicit schema (no inference): read all 0.662 | read 4 columns 0.343
+infer schema from all rows: read all 17.339 | read 4 columns 16.376
+infer schema from 10,000 rows: read all 1.104 | read 4 columns 0.426
+explicit schema (no inference): read all 0.648 | read 4 columns 0.331

@@ -1,0 +1,20 @@
+machine: 12 logical CPUs, 8.2 GB RAM | polars 2.1.0 | memory guard 5.0 GB above baseline | 2 runs per size (best time reported)
+memory k = 1: 1,681,431 rows | best 2.14 s | peak 1,678 MB
+memory k = 2: 3,362,862 rows | best 3.45 s | peak 2,104 MB
+memory k = 4: 6,725,724 rows | best 11.85 s | peak 1,990 MB
+memory k = 6: 10,088,586 rows | best 13.96 s | peak 3,130 MB
+streaming k = 1: 1,681,431 rows | best 1.45 s | peak 2,000 MB
+streaming k = 2: 3,362,862 rows | best 2.81 s | peak 3,247 MB
+streaming k = 4: 6,725,724 rows | best 6.33 s | peak 3,446 MB
+streaming k = 6: 10,088,586 rows | best 18.91 s | peak 3,100 MB
+
+| Engine mode | Size | Rows | Best time (s) | Peak memory (MB) | MB per million rows |
+|---|---|---|---|---|---|
+| memory | 1x | 1,681,431 | 2.14 | 1,678 | 998 |
+| memory | 2x | 3,362,862 | 3.45 | 2,104 | 626 |
+| memory | 4x | 6,725,724 | 11.85 | 1,990 | 296 |
+| memory | 6x | 10,088,586 | 13.96 | 3,130 | 310 |
+| streaming | 1x | 1,681,431 | 1.45 | 2,000 | 1,189 |
+| streaming | 2x | 3,362,862 | 2.81 | 3,247 | 966 |
+| streaming | 4x | 6,725,724 | 6.33 | 3,446 | 512 |
+| streaming | 6x | 10,088,586 | 18.91 | 3,100 | 307 |

@@ -1,55 +1,49 @@
-development rows: 1,193,702 (qidx <= 8027) | positive y 8,678 | positive y_alt 11,944
+development rows: 1,193,702 (1984Q1 to 2006Q4); positive y 8,678; positive y_alt 11,944
 
-== Reproduction check: fold AP of y against Table 12 ==
-B1: reproduced 0.4505 0.2249 0.1108 0.0875 | Table 12 0.4505 0.2249 0.1108 0.0875 | max abs difference 0.0000
-M2: reproduced 0.4276 0.3288 0.3259 0.0508 | Table 12 0.4328 0.3307 0.3295 0.1036 | max abs difference 0.0528
-(a difference above 0.01 means the refit differs from the committed models: change B1_CLASS_WEIGHT / M2_CLASS_WEIGHT / M2_EARLY_STOPPING at the top, or send bank_common.py)
+== Reproduction check against Table 12 (fold AP of y) ==
+B1: reproduced [0.4505, 0.2249, 0.1108, 0.0875] | Table 12 [0.4505, 0.2249, 0.1108, 0.0875] | max abs difference 0.0000
+SEL: reproduced [0.4328, 0.3307, 0.3295, 0.1036] | Table 12 [0.4328, 0.3307, 0.3295, 0.1036] | max abs difference 0.0000
+reproduction OK: the models of this script are the committed models
 
-== D. Implied kappa (unit cost per missed positive row, kappa per false alarm; pooled OOF) ==
-optimal alarm rate (%) by kappa:
-  kappa 0.005 : B1  6.30 | M2  8.82
-  kappa 0.01  : B1  4.87 | M2  6.44
-  kappa 0.02  : B1  4.07 | M2  4.95
-  kappa 0.05  : B1  2.80 | M2  2.74
-  kappa 0.1   : B1  1.83 | M2  1.82
-  B1: a supervisor capacity of 1% of bank-quarters is optimal at kappa = 0.3036
-  B1: a supervisor capacity of 2% of bank-quarters is optimal at kappa = 0.0967
-  B1: a supervisor capacity of 5% of bank-quarters is optimal at kappa = 0.0095
-  B1: a supervisor capacity of 10% of bank-quarters is optimal at kappa = 0.0012
-  M2: a supervisor capacity of 1% of bank-quarters is optimal at kappa = 0.2403
-  M2: a supervisor capacity of 2% of bank-quarters is optimal at kappa = 0.0875
-  M2: a supervisor capacity of 5% of bank-quarters is optimal at kappa = 0.0155
-  M2: a supervisor capacity of 10% of bank-quarters is optimal at kappa = 0.0042
-note: unit costs ignore the asset weighting of Part 5.3, so the rates differ from Table C1; the point is the mapping capacity <-> kappa.
+== A. Implied kappa: kappa at which the cost-optimal alarm rate equals a supervisor capacity (pooled out-of-fold) ==
+capacity B1 asset-weighted B1 unit selected asset-weighted selected unit
+      1%            0.4320  0.2910                  0.2257        0.2729
+      2%            0.1663  0.0908                  0.0964        0.0829
+      5%            0.0106  0.0093                  0.0328        0.0175
+     10%            0.0007  0.0012                  0.0066        0.0041
+optimal alarm rate by kappa (asset-weighted; should match the cost table of Part 5.1):
+ kappa  B1 alarm % (asset-weighted)  selected alarm % (asset-weighted)
+ 0.005                         5.96                              15.27
+ 0.010                         4.97                               9.09
+ 0.020                         4.58                               6.33
+ 0.050                         3.14                               3.37
+ 0.100                         2.80                               1.74
 
-== E. Calibration (Brier = mean squared error of the probability; lower is better) ==
-B1: pooled Brier 0.02413 | per fold: mean predicted vs observed rate
-   fold 1: mean predicted 0.1986 | observed 0.0244
-   fold 2: mean predicted 0.1518 | observed 0.0146
-   fold 3: mean predicted 0.0804 | observed 0.0022
-   fold 4: mean predicted 0.0525 | observed 0.0004
-   fold 2: Brier raw 0.04913 -> isotonic fitted on folds < 2: 0.01303
-   fold 3: Brier raw 0.01820 -> isotonic fitted on folds < 3: 0.00239
-   fold 4: Brier raw 0.00678 -> isotonic fitted on folds < 4: 0.00042
-M2: pooled Brier 0.00550 | per fold: mean predicted vs observed rate
-   fold 1: mean predicted 0.0081 | observed 0.0244
-   fold 2: mean predicted 0.0185 | observed 0.0146
-   fold 3: mean predicted 0.0065 | observed 0.0022
-   fold 4: mean predicted 0.0005 | observed 0.0004
-   fold 2: Brier raw 0.01280 -> isotonic fitted on folds < 2: 0.01420
-   fold 3: Brier raw 0.00278 -> isotonic fitted on folds < 3: 0.00338
-   fold 4: Brier raw 0.00040 -> isotonic fitted on folds < 4: 0.00039
+== B. Calibration (Brier = mean squared error of the probability, lower is better) ==
+B1: pooled Brier 0.02413
+  fold 1: mean predicted 0.1986 | observed 0.0244
+  fold 2: mean predicted 0.1518 | observed 0.0146 | Brier raw 0.04913 -> isotonic fitted on folds < 2: 0.01303
+  fold 3: mean predicted 0.0804 | observed 0.0022 | Brier raw 0.01820 -> isotonic fitted on folds < 3: 0.00239
+  fold 4: mean predicted 0.0525 | observed 0.0004 | Brier raw 0.00678 -> isotonic fitted on folds < 4: 0.00042
+selected: pooled Brier 0.00541
+  fold 1: mean predicted 0.0085 | observed 0.0244
+  fold 2: mean predicted 0.0181 | observed 0.0146 | Brier raw 0.01351 -> isotonic fitted on folds < 2: 0.01408
+  fold 3: mean predicted 0.0061 | observed 0.0022 | Brier raw 0.00263 -> isotonic fitted on folds < 3: 0.00334
+  fold 4: mean predicted 0.0003 | observed 0.0004 | Brier raw 0.00035 -> isotonic fitted on folds < 4: 0.00036
 
-== F. Bank-level bootstrap (200 resamples of banks; AP(M2) - AP(B1)) ==
-  pooled AP: observed difference +0.0103 | 95% interval [-0.0058, +0.0263] | share of resamples with M2 > B1: 0.90
-  mean fold AP: observed difference +0.0648 | 95% interval [+0.0468, +0.0823] | share of resamples with M2 > B1: 1.00
-  an interval that contains 0 means the larger model is not clearly better than the three-feature baseline.
+== C. Bank-level bootstrap (resample banks with replacement) ==
+own weighted AP against scikit-learn on B1 (pooled): difference 0.00174
+  pooled AP: observed difference +0.0092 | 95% interval [-0.0070, +0.0248] | share of resamples with selected > B1: 0.87
+  mean fold AP: observed difference +0.0793 | 95% interval [+0.0594, +0.1005] | share of resamples with selected > B1: 1.00
+  (500 resamples of 23,622 banks; an interval that contains 0 means the larger model is not clearly better than B1)
 
-== G. Label noise: AP against the main label y and the sensitivity label y_alt (development folds) ==
-fold | positives y | positives y_alt | B0 AP(y) / AP(y_alt) | B1 AP(y) / AP(y_alt) | M2 AP(y) / AP(y_alt)
-1 | 3226 | 3911 | 0.256 / 0.364 | 0.451 / 0.645 | 0.428 / 0.489
-2 | 1790 | 2933 | 0.106 / 0.296 | 0.225 / 0.668 | 0.329 / 0.692
-3 | 473 | 849 | 0.041 / 0.171 | 0.111 / 0.460 | 0.326 / 0.330
-4 | 163 | 163 | 0.013 / 0.013 | 0.088 / 0.088 | 0.051 / 0.051
-pooled | 5652 | 7856 | 0.136 / 0.257 | 0.287 / 0.589 | 0.297 / 0.469
-pooled ranking of the models by AP: y ['p_m2', 'p_b1', 'p_b0'] | y_alt ['p_b1', 'p_m2', 'p_b0'] | same order: False
+== D. Label noise: Average Precision against the main label y and the sensitivity label y_alt (models trained on y) ==
+  fold  positives y  positives y_alt B0 AP(y) / AP(y_alt) B1 AP(y) / AP(y_alt) selected AP(y) / AP(y_alt)
+     1         3226             3911        0.256 / 0.364        0.451 / 0.645              0.433 / 0.509
+     2         1790             2933        0.106 / 0.296        0.225 / 0.668              0.331 / 0.737
+     3          473              849        0.041 / 0.171        0.111 / 0.460              0.330 / 0.369
+     4          163              163        0.013 / 0.013        0.088 / 0.088              0.104 / 0.104
+pooled         5652             7856        0.136 / 0.257        0.287 / 0.589              0.294 / 0.522
+pooled ranking by AP against y: ['M2', 'B1', 'B0'] | against y_alt: ['B1', 'M2', 'B0'] | same order: False
+
+built in 103 s
