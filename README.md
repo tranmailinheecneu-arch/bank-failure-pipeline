@@ -197,6 +197,7 @@ The same 18 features are rebuilt in PySpark 4.0.1 (local mode, Google Colab: 2 v
 - Plan (formatted physical plan before execution, so adaptive execution may change partition counts at run time): 6 parquet scans reading 12, 7, 6, 2, 4 and 2 of the 12 columns (column pruning, and a pushed IsNotNull filter on five of the six scans), 12 shuffles (Exchange), 12 sorts, 4 window operators, 4 sort-merge joins, 1 broadcast hash join (the 170-row median table) and 2 object hash aggregates (exact median). The first "Plan facts" block in the results file counts every node twice (tree plus detail section); the second block, "each node counted once", is the correct one.
 - Why 6 scans against 2 in Polars: the sub-plan with ratios and the 4-quarter lag is used by three branches (main result, medians, ranks); in this plan Spark recomputes it for each branch (no ReusedExchange node), while Polars caches it (CACHE node) and scans twice. The cost of Spark is mainly the 12 shuffles and sorts (hash partitioning on CERT, qidx) and JVM scheduling overhead.
 - Time on the same Colab machine (best / median of three after one warm-up): Polars lazy 2.89 / 3.02 s, Spark 52.51 / 55.37 s, so Polars is 18.2 times faster. Spark's output is not collected to the driver, while Polars materialises its result, so the comparison slightly favours Spark.
+- Tuning check (notebook, last cell): with adaptive query execution on, Spark took 72.6 s and 59.8 s with spark.sql.shuffle.partitions = 8, and 63.4 s and 59.1 s with 200; with adaptive execution off and 200 partitions, it took 96.3 s and 107.8 s. Polars remains about 20.45 times faster (using the best Spark run divided by 2.89 s), so the conclusion does not depend on this setting.
 
 ### Part 3.3 When is a cluster justified? (`results/part3_spark_results.txt`, `results/part3_scaling_v2.txt`)
 
@@ -331,6 +332,8 @@ The alarm threshold minimises the total cost on the out-of-fold predictions of t
 | 0.1 | M2 gbm 300 iter, lr 0.05, 31 leaves | 1.74 | 0.689 | 0.824 | 0.398 | 67.41 | 111.91 |
 
 Second alarm rule (capacity rule), added after the development results above had been seen and before the test period was opened: flag the top r% of banks of every quarter, with r the cost-optimal alarm rate of the table at kappa 0.02 (B1 4.58%, M2 gbm 300 iter, lr 0.05, 31 leaves 6.33%). It does not depend on the score scale, which differs between models fitted on different training windows. Both rules are evaluated once on the test period (Part 5.2).
+
+Both rules and their parameters were written to results/part5_selection.json before the test period was opened; neither was changed or chosen after the test results were seen, and both are reported.
 
 ### Part 5.2 test evaluation, used once (`results/part5_test.txt`)
 
