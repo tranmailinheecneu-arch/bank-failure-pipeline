@@ -1,12 +1,13 @@
 # Bank Failure Early-Warning Pipeline (BFT65B)
 
-Individual final report, National Economics University, BFT65B Big Data Analytics in Finance.
-Author: Tran Mai Linh (MSV: 11230990).
+Individual final report, National Economics University, BFT65B Big Data Analytics in Finance. Author: Tran Mai Linh (MSV: 11230990).
 
 Data source: [US FDIC BankFind API](https://api.fdic.gov/banks). Data files are not committed. All other sources, including AI tools, are listed in the Sources section at the end.
 
 ## Setup
-Python 3.13 (Windows tested). Disk space needed: about 2.3 GB (`data_raw` 575 MB + `data_storage` 1,681 MB, mostly the CSV benchmark copies).
+
+Python 3.13 (Windows tested). Disk space: Part 1 uses about 2.3 GB (data_raw 575 MB + data_storage 1,681 MB, mostly the CSV benchmark copies); Parts 2 to 4 add the clean panel (193 MB) and the feature tables in `data_storage/part3/` and `data_storage/part4/`. Allow about 3 GB in total.
+
 ```
 python -m venv .venv
 .venv\Scripts\activate          # Mac/Linux: source .venv/bin/activate
@@ -14,6 +15,7 @@ pip install -r requirements.txt
 ```
 
 ## Repository layout
+
 - `fdic_download_starter.py`: original download script provided by the instructor (unchanged, kept for reference)
 - `download_fdic.py`: my modified copy of the starter script (extended field list, see below)
 - `part1_storage_benchmark.py`, `build_storage.py`, `part1_extra_checks.py`, `part1_polars_csv_check.py`: Part 1
@@ -21,6 +23,7 @@ pip install -r requirements.txt
 - `part3_polars_pandas.py`, `part3_check_std.py`, `part3_make_spark_input.py`, `part3_scaling.py`, `notebooks/part3_spark.ipynb`: Part 3
 - `bank_common.py`, `part4_features.py`: Part 4
 - `bank_models.py`, `part5_validation.py`, `part5_test.py`, `part5_export_mllib.py`, `notebooks/part5_mllib.ipynb`, `part5_dev_extras.py`: Part 5
+- `check_report_numbers.py`: checks that the key numbers quoted in the report and in this README are present in `results/`
 - `results/`: small result files (tables, completeness evidence)
 - `data_raw/`, `data_storage/`: generated locally, not committed
 
@@ -28,12 +31,13 @@ pip install -r requirements.txt
 
 Quick test (4 quarters, 2-3 minutes) instead of step 1: `python download_fdic.py --start 2023-03-31 --end 2023-12-31 --out data_raw/test_v2`
 
-Run in this order (steps 3 and 4 need the files created by step 2):
+Run in this order (steps 3 to 5 need the files created by step 2):
 
 1. Download the full data (about one hour, resumable; rerun the same command if interrupted): `python download_fdic.py`
 2. CSV vs. Parquet storage benchmark (creates `data_storage/*.csv` and `*.parquet`): `python part1_storage_benchmark.py` (output: `results/part1_storage.txt`)
 3. Build the final storage layout (Parquet + zstd, partitioned by year): `python build_storage.py`
 4. Fair benchmark and float32 check: `python part1_extra_checks.py` (outputs in `results/`: schema table, completeness evidence, benchmark tables)
+5. Polars CSV schema-inference check: `python part1_polars_csv_check.py` (output: `results/part1_polars_csv_check.txt`)
 
 ### Data download record
 
@@ -46,7 +50,7 @@ Run in this order (steps 3 and 4 need the files created by step 2):
 - Failures table: 4,117 rows
 - Institutions table: 27,835 rows
 - Completeness: rows equal the API total in all 170 quarters, no duplicate (CERT, REPDTE) (see `results/part1_completeness.txt`)
-- Disk usage measured after a full run: `data_raw` 575 MB, `data_storage` 1,681 MB (includes the CSV benchmark copies)
+- Disk usage measured after a full run of Part 1: `data_raw` 575 MB, `data_storage` 1,681 MB (includes the CSV benchmark copies)
 
 ### Part 1 results
 
@@ -111,7 +115,8 @@ Impossible or suspicious values:
 | Legitimate zeros (not missing) | BRO 1,321,289 zero rows (78.5%), INTAN 71.3%, FREPP 68.9%, ORE 39.8% |
 
 Open items:
-- Failures table has 4,117 rows and institutions has 27,835 rows. Reconciliation (Part 2.2): 4,006 institutions never appear in the panel and 235 panel banks are missing from the institutions table (27,835 − 4,006 + 235 = 24,064).
+
+- Failures table has 4,117 rows and institutions has 27,835 rows. Reconciliation (Part 2.2): 4,006 institutions never appear in the panel and 235 panel banks are missing from the institutions table (27,835 âˆ’ 4,006 + 235 = 24,064).
 - RBCRWAJ is unavailable in 1984-1989 (all rows) and in 35-42% of rows from 2020, so it cannot be the main capital measure of the model; this is handled in Part 4.
 
 ### Part 2.2 exit classification (`results/part2_exits.txt`)
@@ -127,18 +132,18 @@ Every one of the 24,064 banks in the panel is assigned one exit class (last quar
 | survivor_listed_in_failures | 7 | 0.03% |
 | failure_date_before_first_report | 2 | 0.01% |
 
-- The Failures table has 4,117 rows: 488 have no usable CERT (all dated before 1984), 344 linked banks never appear in the panel (22 dated 1984 or later), and 400 banks have only an ASSISTANCE event (393 later left the panel, 7 still report). The table does not separate open-bank assistance from assisted mergers (242 exits carry the change code "Merger - Assisted"), but 37 banks were assisted and failed later, so some kept operating. The main label therefore counts only RESTYPE = FAILURE; the sensitivity label y_alt adds the assistance banks and the 865 failure-like exits.
+- The Failures table has 4,117 rows: 488 have no usable CERT (all dated before 1984), 344 linked banks never appear in the panel (22 dated 1984 or later), and 400 banks have only an ASSISTANCE event (393 later left the panel, 7 still report). The table does not separate open-bank assistance from assisted mergers (242 exits carry the change code "Merger - Assisted"), but 37 banks were assisted and failed later, so some kept operating. The main label therefore counts only RESTYPE = FAILURE; the sensitivity label `y_alt` adds the assistance banks and the 865 failure-like exits.
 - Banks with a FAILURE event in the panel: 2,841 (2,662 clean failures, 177 that kept reporting after FAILDATE, 2 with FAILDATE before their first report).
 - Failures by year of last report peak in 1989 (416 banks); other exits peak in 1994 (840 banks); 2026 covers the first half-year only (`results/fig_part2_exits_by_year.png`).
 - No classified failure has its last report more than four quarters before FAILDATE, so every one of them can receive a positive four-quarter-ahead label.
-- 841 of 2,662 classified failures may have a final report that was not public before failure under the 35-day publication-lag assumption (an assumption, not measured).
+- 841 of 2,662 classified failures may have a final report that was not public before failure under the 35-day publication-lag assumption (an assumption, not measured). This count is per bank and by the date of the last report (91 reports dated on or after the failure date, 750 within 35 days before it). Part 2.3 counts the same effect on the positive rows of the clean panel, after the rows dated on or after the failure quarter are dropped: 798 rows of 2,837 failing banks (28.1%).
 - 865 other exits carry a receivership, bridge-bank, payoff or assisted-merger FDIC change code but are not linked to a FAILURE row (candidates for failures missing from the failures table). Decision (Part 2.3): they stay other exits with y = 0 in the main label; the sensitivity label `y_alt` treats them as failures one quarter after their last report.
 - 186 banks fall in anomaly classes: 177 still reported after their FAILURE date, 2 have a FAILURE date before their first report, and 7 are listed only with an ASSISTANCE event but still report.
 - Built with a lazy Polars scan that reads 3 of 51 columns in 0.2 s (`results/part2_exits_plan.txt`).
 
 ### Part 2.3 clean panel and label (`results/part2_clean_panel.txt`)
 
-Output `data_storage/panel_clean/` (1,681,431 rows, 24,062 banks, 61 columns, 193 MB). Label: `y = 1` if the bank fails in (q, q + 4 quarters]; only RESTYPE = FAILURE counts and a merger is never a failure. `y` is null after 2025Q2 because those labels are incomplete.
+Output `data_storage/panel_clean/` (1,681,431 rows, 24,062 banks, 61 columns, 193 MB). Label: y = 1 if the bank fails in (q, q + 4 quarters]; only RESTYPE = FAILURE counts and a merger is never a failure. y is null after 2025Q2 because those labels are incomplete.
 
 | Problem | Handling | Effect |
 |---|---|---|
@@ -156,20 +161,21 @@ Output `data_storage/panel_clean/` (1,681,431 rows, 24,062 banks, 61 columns, 19
 - `y`, `y_alt`, `y_before_public` and `avail_date` are label or timing columns and must not be used as features.
 - Verification on the written data: 8 of 8 checks passed (row count, no duplicates, null labels only after 2025Q2, independent recount of positives, no label for non-failed banks, no row after the failure quarter, no future-revealing column, no exact zero left in the capital ratios).
 
-
 ## Part 3: Scalable processing
 
 Run after Part 2.3 (reads `data_storage/panel_clean/`):
 
 1. Polars vs pandas benchmark and equivalence check: `python part3_polars_pandas.py` (a few minutes; outputs: `results/part3_polars_pandas.txt`, `results/part3_polars_plan.txt`; the feature tables go to `data_storage/part3/`, not committed)
-2. Diagnosis of the only numerical difference: `python part3_check_std.py | Out-File results\part3_std_check.txt -Encoding utf8`
+2. Diagnosis of the only numerical difference (the script prints its report; save it to a file):
+   - Windows PowerShell: `python part3_check_std.py | Out-File results\part3_std_check.txt -Encoding utf8`
+   - Mac/Linux: `python part3_check_std.py > results/part3_std_check.txt`
 3. Input file for the Spark notebook (12 columns): `python part3_make_spark_input.py`
 4. Spark on Google Colab: run `notebooks/part3_spark.ipynb` (upload `data_storage/part3/spark_input.parquet` and `part3_polars_pandas.py`; Java 17, pyspark 4.0.1; outputs `results/part3_spark_results.txt`, `results/part3_spark_plan.txt`)
 5. Scaling experiment on the laptop (in-memory and streaming engine, 1x to 6x, memory guard 5 GB): `python part3_scaling.py` (output: `results/part3_scaling_v2.txt`)
 
 ### Part 3.1 Polars vs pandas (`results/part3_polars_pandas.txt`)
 
-The same 18 features are built in pandas, Polars eager and Polars lazy from the clean panel (1,681,431 rows): safe ratios, 4-quarter calendar lags (self-join on `qidx + 4`, so a gap in a bank's history never shifts a lag), a 4-quarter rolling window of quarterly ROA, and same-quarter cross-sectional median and rank. Only quarter q and earlier data (or the same quarter) are used.
+The same 18 features are built in pandas, Polars eager and Polars lazy from the clean panel (1,681,431 rows): safe ratios, 4-quarter calendar lags (self-join on qidx + 4, so a gap in a bank's history never shifts a lag), a 4-quarter rolling window of quarterly ROA, and same-quarter cross-sectional median and rank. Only quarter q and earlier data (or the same quarter) are used.
 
 Machine: 12 logical CPUs, 8.2 GB RAM, polars 2.1.0, pandas 3.1.1, Python 3.13.7. Each engine runs in its own process with one warm-up run; memory is the peak resident set size (sampled every 20 ms) minus the size after imports.
 
@@ -180,22 +186,21 @@ Machine: 12 logical CPUs, 8.2 GB RAM, polars 2.1.0, pandas 3.1.1, Python 3.13.7.
 | polars_lazy | 5 | 2.23 | 2.59 | 1,703 | 2.4x / 4.3x |
 
 - Equivalence: 18 of 18 features match pandas (relative tolerance 1e-6, absolute 1e-9, and 1e-6 for the rolling standard deviation), same 1,681,431 rows, keys and null pattern; eager and lazy Polars are identical. The only difference is `roa_q_std4`: 5 of 1,652,719 comparable rows differ by more than 1e-9 (largest 1.86e-8), none by more than 1e-6; in the worst row (CERT 28535) the four ROAQ values in the window are all 0.69, so the true standard deviation is exactly 0: Polars returns 0 and pandas leaves a rounding residue.
-- Every engine has one warm-up and five timed runs. Polars is 2.4 to 2.7 times faster than pandas by best time and 4.3 to 4.4 times by median; the median of pandas (11.0 s) is twice its best time (5.5 s), so pandas varies a lot between runs (not investigated). Polars uses 1.3 to 1.4 times the memory of pandas. Lazy is not faster than eager (2.23 against 2.01 s) because the eager code already reads only the 12 needed columns. All timings come from one laptop and vary between runs.;
-- Query plan (`results/part3_polars_plan.txt`): the unoptimised plan scans the panel 4 times with all 61 columns (244 column reads); the optimised plan scans it twice, reading 12 and 7 of 61 columns (19 column reads), computes the shared conditions `ASSET > 0` and `LNLSGR > 0` once, and caches the shared ratio-and-lag sub-plan so that the rolling window reuses it. No filter appears in the query, so predicate pushdown does not apply yet.
-- The lazy engine matters when the column choice is not written by hand, and for filters (Part 4)
+- Every engine has one warm-up and five timed runs. Polars is 2.4 to 2.7 times faster than pandas by best time and 4.3 to 4.4 times by median; the median of pandas (11.0 s) is twice its best time (5.5 s), so pandas varies a lot between runs (not investigated). Polars uses 1.3 to 1.4 times the memory of pandas. Lazy is not faster than eager (2.23 against 2.01 s) because the eager code already reads only the 12 needed columns; the lazy engine matters when the column choice is not written by hand, and for filters (Part 4). All timings come from one laptop and vary between runs.
+- Query plan (`results/part3_polars_plan.txt`): the unoptimised plan scans the panel 4 times with all 61 columns (244 column reads); the optimised plan scans it twice, reading 12 and 7 of 61 columns (19 column reads), computes the shared conditions ASSET > 0 and LNLSGR > 0 once, and caches the shared ratio-and-lag sub-plan so that the rolling window reuses it. No filter appears in the query, so predicate pushdown does not apply yet.
 
 ### Part 3.2 Spark (`results/part3_spark_results.txt`, `results/part3_spark_plan.txt`, `notebooks/part3_spark.ipynb`)
 
 The same 18 features are rebuilt in PySpark 4.0.1 (local mode, Google Colab: 2 vCPU, 13.6 GB RAM, Polars 1.35.2, Python 3.13, adaptive query execution on) and compared with Polars on the same input file (12 columns of the clean panel, 1,681,431 rows). Spark local mode is not a cluster: it measures the engine, not the speed-up from adding machines.
 
-- Equivalence: 18 of 18 features match Polars (same rows and keys). The first comparison gave 17 of 18 with a 1e-7 tolerance for `roa_q_std4`; the diagnosis found 15 of 1,652,719 rows above 1e-7 and none above 1e-6 (largest 6.74e-7). In the worst row (CERT 27229) the four ROAQ values of the window are all 0.0, so the exact standard deviation (NumPy, two-pass) is 0: Spark returns 0 and Polars 6.74e-7, and Spark is closer to the exact value in all 15 rows. The tolerance was then set to 1e-6 for this feature (1e-9 for the others). The rounding residue depends on engine, version and the values before the window: on the laptop run (Polars 2.1.0) it was pandas that left a residue (1.9e-8). `log_asset` differs by 3.6e-15 (different `log` implementations).
+- Equivalence: 18 of 18 features match Polars (same rows and keys). The first comparison gave 17 of 18 with a 1e-7 tolerance for `roa_q_std4`; the diagnosis found 15 of 1,652,719 rows above 1e-7 and none above 1e-6 (largest 6.74e-7). In the worst row (CERT 27229) the four ROAQ values of the window are all 0.0, so the exact standard deviation (NumPy, two-pass) is 0: Spark returns 0 and Polars 6.74e-7, and Spark is closer to the exact value in all 15 rows. The tolerance was then set to 1e-6 for this feature (1e-9 for the others). The rounding residue depends on engine, version and the values before the window: on the laptop run (Polars 2.1.0) it was pandas that left a residue (1.9e-8). `log_asset` differs by 3.6e-15 (different log implementations).
 - Plan (formatted physical plan before execution, so adaptive execution may change partition counts at run time): 6 parquet scans reading 12, 7, 6, 2, 4 and 2 of the 12 columns (column pruning, and a pushed IsNotNull filter on five of the six scans), 12 shuffles (Exchange), 12 sorts, 4 window operators, 4 sort-merge joins, 1 broadcast hash join (the 170-row median table) and 2 object hash aggregates (exact median). The first "Plan facts" block in the results file counts every node twice (tree plus detail section); the second block, "each node counted once", is the correct one.
-- Why 6 scans against 2 in Polars: the sub-plan with ratios and the 4-quarter lag is used by three branches (main result, medians, ranks); in this plan Spark recomputes it for each branch (no `ReusedExchange` node), while Polars caches it (`CACHE` node) and scans twice. The cost of Spark is mainly the 12 shuffles and sorts (hash partitioning on `CERT, qidx`) and JVM scheduling overhead.
+- Why 6 scans against 2 in Polars: the sub-plan with ratios and the 4-quarter lag is used by three branches (main result, medians, ranks); in this plan Spark recomputes it for each branch (no ReusedExchange node), while Polars caches it (CACHE node) and scans twice. The cost of Spark is mainly the 12 shuffles and sorts (hash partitioning on CERT, qidx) and JVM scheduling overhead.
 - Time on the same Colab machine (best / median of three after one warm-up): Polars lazy 2.89 / 3.02 s, Spark 52.51 / 55.37 s, so Polars is 18.2 times faster. Spark's output is not collected to the driver, while Polars materialises its result, so the comparison slightly favours Spark.
 
 ### Part 3.3 When is a cluster justified? (`results/part3_spark_results.txt`, `results/part3_scaling_v2.txt`)
 
-The panel is replicated k times (`CERT + i * 10,000,000`, so each copy is an independent set of banks).
+The panel is replicated k times (CERT + i * 10,000,000, so each copy is an independent set of banks).
 
 | Colab (2 vCPU), one run per size | Rows | Polars (s) | Spark (s) | Spark s per million rows |
 |---|---|---|---|---|
@@ -219,7 +224,7 @@ Laptop (12 CPUs, 8.2 GB), best of 2 runs, memory guard 5 GB (`results/part3_scal
 - Spark in local mode is 15 to 18 times slower than Polars and grows linearly (33 to 36 s per million rows). One run per size cannot separate the shape of the Polars curve from noise.
 - A panel 6 times larger (10.1 million rows) needed 3.1 GB at its peak (38% of the 8.2 GB RAM) and the 5 GB guard was never reached, so the single-machine limit is above 6 times the panel. Extrapolating the slope between 4x and 6x (about 340 MB per extra million rows) gives about 20 million rows (12x) at 80% of the RAM; this is a rough extrapolation, not a measurement.
 - The streaming engine did not lower the peak memory (3,100 against 3,130 MB at 6x) and was slower at 6x (18.9 against 14.0 s); which operations ran in the streaming engine was not checked.
-- Conclusion: for a 1.7 million row panel (about 200 MB of compressed Parquet, about 2 seconds on one machine) a cluster is not justified. It would be justified when the data no longer fits in one machine's memory (here beyond at least 6 times the panel, which fitted in 3.1 GB; for instance loan-level data), when a time limit cannot be met on one machine, when the work splits by independent keys without cross-sectional shuffles, or when the data already lives in distributed storage. 
+- Conclusion: for a 1.7 million row panel (about 200 MB of compressed Parquet, about 2 seconds on one machine) a cluster is not justified. It would be justified when the data no longer fits in one machine's memory (here beyond at least 6 times the panel, which fitted in 3.1 GB; for instance loan-level data), when a time limit cannot be met on one machine, when the work splits by independent keys without cross-sectional shuffles, or when the data already lives in distributed storage.
 
 ## Part 4: Feature pipeline
 
@@ -229,38 +234,37 @@ Run after Part 2.3 and Part 3 (reads `data_storage/panel_clean/`, imports `part3
 
 ### Part 4 feature table, split and leakage control (`results/part4_features.txt`)
 
-Feature table `data_storage/part4/features.parquet` (1,681,431 rows): 24 model features in 7 groups (17 from Part 3 plus 7 same-quarter ratios) joined with the labels `y`, `y_alt`, `y_before_public` and the timestamp `avail_date` of Part 2.3. Every feature uses quarter q and earlier data only (lags and rolling windows look backwards) or the same quarter (cross-sectional median and rank). Not used: `roa_q_n4` (a count of quarters, a data-availability artefact), the year or quarter index (a model would learn the era), the regulatory capital ratios RBC1AAJ and RBCRWAJ (RBCRWAJ is zero in every row of 1984-1989 and again in 35-42% of rows from 2020; RBC1AAJ is zero in about 18% of rows in 1984-1989) and the `ACTIVE` flag of the institutions table (it knows the future). The single-feature AUC and the missing shares below use development rows only.
+Feature table `data_storage/part4/features.parquet` (1,681,431 rows): 24 model features in 7 groups (17 from Part 3 plus 7 same-quarter ratios) joined with the labels `y`, `y_alt`, `y_before_public` and the timestamp `avail_date` of Part 2.3. Every feature uses quarter q and earlier data only (lags and rolling windows look backwards) or the same quarter (cross-sectional median and rank). Not used: `roa_q_n4` (a count of quarters, a data-availability artefact), the year or quarter index (a model would learn the era), the regulatory capital ratios RBC1AAJ and RBCRWAJ (RBCRWAJ is zero in every row of 1984-1989 and again in 35-42% of rows from 2020; RBC1AAJ is zero in about 18% of rows in 1984-1989) and the ACTIVE flag of the institutions table (it knows the future). The single-feature AUC and the missing shares below use development rows only.
 
 | Group | Feature | Why it matters | Null % dev | Null % 1984-89 | Dev AUC (single feature) |
 |---|---|---|---|---|---|
-| capital | `eq_assets` | Capital buffer: equity / assets; thin capital absorbs fewer losses | 0.24 | 0.19 | 0.053 |
-| capital | `d_eq_assets_4q` | 4-quarter change of the capital ratio: erosion is a warning sign | 8.00 | 19.38 | 0.137 |
-| capital | `eq_assets_med_q` | Median capital ratio of all banks in the same quarter (system-wide context) | 0.00 | 0.00 | 0.275 |
-| capital | `eq_assets_pct_q` | Rank of the bank's capital ratio within the quarter (0 to 1) | 0.24 | 0.19 | 0.080 |
-| asset quality | `npl_loans` | Non-current loans / gross loans: credit problems already visible | 1.12 | 1.02 | 0.908 |
-| asset quality | `reserves_loans` | Loan-loss reserves / gross loans: cushion against bad loans | 1.15 | 0.61 | 0.751 |
-| asset quality | `d_npl_loans_4q` | 4-quarter change of the non-current loan ratio | 8.81 | 20.15 | 0.656 |
-| asset quality | `npl_loans_med_q` | Median non-current loan ratio in the quarter (system-wide stress) | 0.00 | 0.00 | 0.715 |
-| asset quality | `ore_assets` | Foreclosed real estate / assets: assets taken over from defaulted loans | 0.29 | 0.24 | 0.885 |
-| earnings | `roaq` | Quarterly return on assets (earnings power) | 0.28 | 0.32 | 0.101 |
-| earnings | `roa_q_mean4` | Average quarterly ROA over the last 4 quarters | 0.26 | 0.25 | 0.064 |
-| earnings | `roa_q_std4` | Volatility of quarterly ROA over the last 4 quarters | 2.26 | 5.20 | 0.910 |
-| earnings | `nimy` | Net interest margin (core profitability) | 0.00 | 0.00 | 0.255 |
-| liquidity and funding | `liquid_assets` | (Cash balances + securities) / assets: liquidity buffer | 0.01 | 0.00 | 0.276 |
-| liquidity and funding | `bro_dep` | Brokered deposits / deposits: reliance on volatile funding | 1.90 | 3.52 | 0.610 |
-| liquidity and funding | `dep_assets` | Deposits / assets: funding structure | 0.00 | 0.00 | 0.773 |
-| loan book | `loans_assets` | Loans / assets: share of the balance sheet exposed to credit risk | 0.00 | 0.01 | 0.621 |
-| loan book | `lnre_assets` | Real-estate loans / assets: concentration in real estate | 0.00 | 0.00 | 0.566 |
-| loan book | `lnci_assets` | Commercial and industrial loans / assets | 0.00 | 0.00 | 0.522 |
-| loan book | `lncon_assets` | Consumer loans / assets | 0.22 | 0.14 | 0.489 |
-| growth | `asset_yoy` | Asset growth over 4 quarters: very fast growth can signal risk-taking | 7.78 | 19.22 | 0.197 |
-| growth | `loans_yoy` | Loan growth over 4 quarters | 8.56 | 19.55 | 0.203 |
-| growth | `dep_yoy` | Deposit growth over 4 quarters | 8.30 | 19.46 | 0.265 |
-| size | `log_asset` | Size (log of assets) | 0.00 | 0.00 | 0.478 |
+| capital | eq_assets | Capital buffer: equity / assets; thin capital absorbs fewer losses | 0.24 | 0.19 | 0.053 |
+| capital | d_eq_assets_4q | 4-quarter change of the capital ratio: erosion is a warning sign | 8.00 | 19.38 | 0.137 |
+| capital | eq_assets_med_q | Median capital ratio of all banks in the same quarter (system-wide context) | 0.00 | 0.00 | 0.275 |
+| capital | eq_assets_pct_q | Rank of the bank's capital ratio within the quarter (0 to 1) | 0.24 | 0.19 | 0.080 |
+| asset quality | npl_loans | Non-current loans / gross loans: credit problems already visible | 1.12 | 1.02 | 0.908 |
+| asset quality | reserves_loans | Loan-loss reserves / gross loans: cushion against bad loans | 1.15 | 0.61 | 0.751 |
+| asset quality | d_npl_loans_4q | 4-quarter change of the non-current loan ratio | 8.81 | 20.15 | 0.656 |
+| asset quality | npl_loans_med_q | Median non-current loan ratio in the quarter (system-wide stress) | 0.00 | 0.00 | 0.715 |
+| asset quality | ore_assets | Foreclosed real estate / assets: assets taken over from defaulted loans | 0.29 | 0.24 | 0.885 |
+| earnings | roaq | Quarterly return on assets (earnings power) | 0.28 | 0.32 | 0.101 |
+| earnings | roa_q_mean4 | Average quarterly ROA over the last 4 quarters | 0.26 | 0.25 | 0.064 |
+| earnings | roa_q_std4 | Volatility of quarterly ROA over the last 4 quarters | 2.26 | 5.20 | 0.910 |
+| earnings | nimy | Net interest margin (core profitability) | 0.00 | 0.00 | 0.255 |
+| liquidity and funding | liquid_assets | (Cash balances + securities) / assets: liquidity buffer | 0.01 | 0.00 | 0.276 |
+| liquidity and funding | bro_dep | Brokered deposits / deposits: reliance on volatile funding | 1.90 | 3.52 | 0.610 |
+| liquidity and funding | dep_assets | Deposits / assets: funding structure | 0.00 | 0.00 | 0.773 |
+| loan book | loans_assets | Loans / assets: share of the balance sheet exposed to credit risk | 0.00 | 0.01 | 0.621 |
+| loan book | lnre_assets | Real-estate loans / assets: concentration in real estate | 0.00 | 0.00 | 0.566 |
+| loan book | lnci_assets | Commercial and industrial loans / assets | 0.00 | 0.00 | 0.522 |
+| loan book | lncon_assets | Consumer loans / assets | 0.22 | 0.14 | 0.489 |
+| growth | asset_yoy | Asset growth over 4 quarters: very fast growth can signal risk-taking | 7.78 | 19.22 | 0.197 |
+| growth | loans_yoy | Loan growth over 4 quarters | 8.56 | 19.55 | 0.203 |
+| growth | dep_yoy | Deposit growth over 4 quarters | 8.30 | 19.46 | 0.265 |
+| size | log_asset | Size (log of assets) | 0.00 | 0.00 | 0.478 |
 
-- Redundancy: 3 feature pairs have a Spearman correlation above 0.9 in development rows (`eq_assets` ~ `eq_assets_pct_q`; `eq_assets_med_q` ~ `npl_loans_med_q`; `asset_yoy` ~ `dep_yoy`). They are kept: the tree model is insensitive to it and the logistic model is regularised.
-
-Split (decided from the failure counts of Part 2.3 before any model was fitted; the test period is used once, in Part 5): development 1984Q1 to 2006Q4, gap 2007Q1 to 2007Q4 (four quarters, because a label looks four quarters ahead), test 2008Q1 to 2014Q4.
+- Redundancy: 3 feature pairs have a Spearman correlation above 0.9 in development rows (eq_assets ~ eq_assets_pct_q; eq_assets_med_q ~ npl_loans_med_q; asset_yoy ~ dep_yoy). They are kept: the tree model is insensitive to it and the logistic model is regularised.
+- Split (decided from the failure counts of Part 2.3 before any model was fitted; the test period is used once, in Part 5): development 1984Q1 to 2006Q4, gap 2007Q1 to 2007Q4 (four quarters, because a label looks four quarters ahead), test 2008Q1 to 2014Q4.
 
 | Period | Rows | Labelled rows | Positive rows | Failing banks | Positive rows (actionable) | Positive % |
 |---|---|---|---|---|---|---|
@@ -269,13 +273,25 @@ Split (decided from the failure counts of Part 2.3 before any model was fitted; 
 | test | 212,645 | 212,645 | 2,005 | 513 | 1,764 | 0.943 |
 | after | 240,330 | 222,801 | 129 | 36 | 111 | 0.058 |
 
-- All preprocessing lives in a scikit-learn `Pipeline` (`bank_common.py`, function `preprocessing`) fitted on training rows only: clipping to the 0.5% and 99.5% quantiles, median imputation and standardisation for the linear model; clipping only for the tree model (native missing-value handling). Demonstration: fitting the clip bounds on dev + test rows instead of dev rows changes them (largest relative shift of an upper bound 0.19), which is exactly the leak the Pipeline avoids.
-- Rows with `y_before_public = 1` (the report was not public before the bank failed) are flagged here; their treatment in training and evaluation is decided in Part 5.
-- Leakage tests: 8 of 8 safety tests passed (features of earlier rows do not change when later rows are removed, at two cut-offs; four-quarter dev/test gap; no label column among the features; no failing bank in both periods; test period ends before labels become incomplete; clip bounds equal to the development quantiles; unchanged after transforming test rows), plus one demonstration that fitting the clip bounds on dev + test rows would change them.
+- All preprocessing lives in a scikit-learn Pipeline (`bank_common.py`, function `preprocessing`) fitted on training rows only: clipping to the 0.5% and 99.5% quantiles, median imputation and standardisation for the linear model; clipping only for the tree model (native missing-value handling). Demonstration: fitting the clip bounds on dev + test rows instead of dev rows changes them (largest relative shift of an upper bound 0.19), which is exactly the leak the Pipeline avoids.
+- Rows with `y_before_public` = 1 (the report was not public before the bank failed) are flagged here; their treatment in training and evaluation is decided in Part 5.
+- Leakage tests: 8 of 8 safety tests passed (features of earlier rows do not change when later rows are removed, at two cut-offs, 2000Q4 and 2010Q4; four-quarter dev/test gap; no label column among the features; no failing bank in both periods; test period ends before labels become incomplete; clip bounds equal to the development quantiles; unchanged after transforming test rows), plus one demonstration that fitting the clip bounds on dev + test rows would change them.
+
 ## Part 5: Modelling and validation
+
+Run after Part 4 (reads `data_storage/part4/features.parquet`), in this order:
+
+1. Validation, model selection and alarm thresholds on the development period only: `python part5_validation.py` (outputs: `results/part5_validation.txt`, `results/part5_selection.json`)
+2. Commit the selection before the test period is opened: `git add results/part5_selection.json` then `git commit -m "Part 5 selection"` (the test script refuses to run if this file is not committed)
+3. Single test evaluation: `python part5_test.py` (outputs: `results/part5_test.txt`, `results/part5_test_LOCK.json`). The committed lock file documents the original single run, so the script refuses to run again in this repository; to reproduce the evaluation, work in a scratch copy of the repository and move `results/part5_test_LOCK.json` away first.
+4. Export of the development rows for the MLlib demo: `python part5_export_mllib.py` (development rows only, no test row)
+5. Spark MLlib on Google Colab: run notebooks/part5_mllib.ipynb after uploading data_storage/part5/mllib_input.parquet (output: `results/part5_mllib_results.txt`)
+6. Post-hoc robustness checks on the development period (run after the test, changes no committed choice): `python part5_dev_extras.py` (output: `results/part5_dev_extras.txt`)
+7. Optional check that the numbers quoted in the report and in this README are present in `results/`: `python check_report_numbers.py` (expected: all checks passed)
+
 ### Part 5.1 validation, model choice and alarm threshold (`results/part5_validation.txt`, `results/part5_selection.json`)
 
-Validation: four expanding-window folds inside the development period, with four quarters left out between the end of training and the start of validation (a label looks four quarters ahead; asserted in the code). Random cross-validation is not used: it would mix quarters and put the same bank on both sides. This script never reads the test rows. Metric: Average Precision (area under the precision-recall curve), because about 0.7% of development bank-quarters are positive (between 0.04% and 2.4% inside the validation folds) and accuracy would reward never raising an alarm; recall and lift at a fixed alarm capacity (1% or 5% of bank-quarters flagged) and the share of failing banks caught are reported next to it, ROC-AUC only as a secondary figure. Rows with `y_before_public = 1` stay in training but are excluded from evaluation (nobody could have acted on them); the last column shows the pooled AP with them included.
+Validation: four expanding-window folds inside the development period, with four quarters left out between the end of training and the start of validation (a label looks four quarters ahead; asserted in the code). Random cross-validation is not used: it would mix quarters and put the same bank on both sides. This script never reads the test rows. Metric: Average Precision (area under the precision-recall curve), because about 0.7% of development bank-quarters are positive (between 0.04% and 2.4% inside the validation folds) and accuracy would reward never raising an alarm; recall and lift at a fixed alarm capacity (1% or 5% of bank-quarters flagged) and the share of failing banks caught are reported next to it, ROC-AUC only as a secondary figure. Rows with `y_before_public` = 1 stay in training but are excluded from evaluation (nobody could have acted on them); the last column of the model table shows the pooled AP with them included.
 
 | Fold | Train | Validation | Purged quarters | Train positive rows | Validation positive rows | Validation failing banks | Validation base rate % |
 |---|---|---|---|---|---|---|---|
@@ -295,10 +311,11 @@ Validation: four expanding-window folds inside the development period, with four
 | M2 gbm 300 iter, lr 0.05, 15 leaves | 0.299 | 0.4353 | 0.3306 | 0.3245 | 0.1056 | 0.2943 | 0.9773 | 0.511 | 0.893 | 17.9 | 0.3165 |
 | M2 gbm 300 iter, lr 0.05, 31 leaves | 0.2992 | 0.4328 | 0.3307 | 0.3295 | 0.1036 | 0.2942 | 0.9748 | 0.506 | 0.884 | 17.7 | 0.3163 |
 
-- Selection rule, fixed before any result was seen: among the models with 24 features (M1 logistic, M2 gradient boosting) the highest mean fold AP. Selected: **M2 gbm 300 iter, lr 0.05, 31 leaves**. Baselines (fixed): B0 ranks by the non-current loan ratio alone, B1 is a logistic model on three features (`eq_assets`, `npl_loans`, `roaq`). All preprocessing is inside the Pipeline fitted on the training rows of each fold. M2 wins by mean fold AP (0.2992 against 0.2184 for B1), driven by folds 2 and 3, while the pooled AP is almost equal (0.2942 against 0.2868) and B1 saves more cost at its cost-optimal threshold (86% against 69% at kappa 0.02).
+- Selection rule, fixed before any result was seen: among the models with 24 features (M1 logistic, M2 gradient boosting) the highest mean fold AP. Selected: M2 gbm 300 iter, lr 0.05, 31 leaves. Baselines (fixed): B0 ranks by the non-current loan ratio alone, B1 is a logistic model on three features (eq_assets, npl_loans, roaq). All preprocessing is inside the Pipeline fitted on the training rows of each fold. M2 wins by mean fold AP (0.2992 against 0.2184 for B1), driven by folds 2 and 3, while the pooled AP is almost equal (0.2942 against 0.2868) and B1 saves more cost at its cost-optimal threshold (86% against 69% at kappa 0.02).
 - Cost of a missed failure, from the failures table (failures of 1984-2007, 2,291 with COST and assets at failure): asset-weighted loss rate 0.1959 (sum of COST over sum of assets at failure), times the bank's assets, spread over the up to four positive quarters of a failure: 15.3 million USD per positive bank-quarter on average.
-- Cost of a false alarm: not observable in FDIC data. Assumed to be kappa times the average missed-failure cost, main kappa = 0.02 (a false alarm costs one fiftieth of a missed failure), with a sensitivity analysis from 0.005 to 0.1. This is an assumption, not an estimate.
-- The alarm threshold minimises the total cost on the out-of-fold predictions of the development period (no test data):
+- Cost of a false alarm: not observable in FDIC data. Assumed to be kappa times the average missed-failure cost, main kappa = 0.02 (a false alarm costs one fiftieth of a missed failure), with a sensitivity analysis from 0.005 to 0.1. This is an assumption, not an estimate; Part 5.4 restates it as a supervisory capacity.
+
+The alarm threshold minimises the total cost on the out-of-fold predictions of the development period (no test data):
 
 | kappa | Model | Alarm rate % | Recall (bank-quarters) | Recall (failing banks) | Cost saving vs no alarm | Cost (bn USD) | No-alarm cost (bn USD) |
 |---|---|---|---|---|---|---|---|
@@ -313,14 +330,13 @@ Validation: four expanding-window folds inside the development period, with four
 | 0.1 | B1 logistic, 3 features | 2.8 | 0.859 | 0.947 | 0.587 | 46.23 | 111.91 |
 | 0.1 | M2 gbm 300 iter, lr 0.05, 31 leaves | 1.74 | 0.689 | 0.824 | 0.398 | 67.41 | 111.91 |
 
-- Second alarm rule (capacity rule), added after the development results above had been seen and before the test period was opened: flag the top r% of banks of every quarter, with r the cost-optimal alarm rate of the table at kappa 0.02 (B1 4.58%, M2 gbm 300 iter, lr 0.05, 31 leaves 6.33%). It does not depend on the score scale, which differs between models fitted on different training windows. Both rules are evaluated once on the test period (Part 5.2).
+Second alarm rule (capacity rule), added after the development results above had been seen and before the test period was opened: flag the top r% of banks of every quarter, with r the cost-optimal alarm rate of the table at kappa 0.02 (B1 4.58%, M2 gbm 300 iter, lr 0.05, 31 leaves 6.33%). It does not depend on the score scale, which differs between models fitted on different training windows. Both rules are evaluated once on the test period (Part 5.2).
 
 ### Part 5.2 test evaluation, used once (`results/part5_test.txt`)
 
-To reproduce the evaluation in a scratch copy of the repository, move results/part5_test_LOCK.json away first (the committed lock documents the original single run)
-The test period (2008Q1 to 2014Q4) was opened exactly once, after `results/part5_selection.json` was committed; `results/part5_test_LOCK.json` records the time, the hash of that file and the git commit, and the script refuses to run a second time or when the selection file is not committed. All models are refitted on all development rows; thresholds and alarm rates come from the development period. Evaluation uses the actionable rows (reports that were public before the failure).
+The test period (2008Q1 to 2014Q4) was opened exactly once, after `results/part5_selection.json` was committed; `results/part5_test_LOCK.json` records the time, the hash of that file and the git commit, and the script refuses to run a second time or when the selection file is not committed. All models are refitted on all development rows; thresholds and alarm rates come from the development period. Evaluation uses the actionable rows (reports that were public before the failure). To reproduce the evaluation in a scratch copy of the repository, move `results/part5_test_LOCK.json` away first (the committed lock documents the original single run).
 
-| Model | AP | ROC-AUC | Recall @1% | Recall @5% | Lift @5% | AP, all rows | AP vs `y_alt` |
+| Model | AP | ROC-AUC | Recall @1% | Recall @5% | Lift @5% | AP, all rows | AP vs y_alt |
 |---|---|---|---|---|---|---|---|
 | B0 npl_loans only | 0.1748 | 0.9376 | 0.293 | 0.72 | 14.4 | 0.2063 | 0.2022 |
 | B1 logistic, 3 features | 0.4946 | 0.976 | 0.573 | 0.904 | 18.1 | 0.5505 | 0.5426 |
@@ -375,20 +391,20 @@ Average Precision of M2 gbm 300 iter, lr 0.05, 31 leaves by test year:
 
 ### Part 5.3 Spark MLlib demo (`results/part5_mllib_results.txt`, `notebooks/part5_mllib.ipynb`)
 
-A short MLlib demo on fold 4 of the purged validation (Google Colab, 2 vCPU, pyspark 4.0.1; input exported from the development rows only by `part5_export_mllib.py`, so no test row is involved). Pipeline: `Imputer` (median), `VectorAssembler`, `StandardScaler` (logistic model only), `LogisticRegression` or `GBTClassifier` with a balanced class weight; the clip bounds (0.5% and 99.5% quantiles, `approxQuantile`) are learned on the training rows only. Training: 1984Q1 to 1994Q4 (704,362 rows, 8,488 positive); validation: 1996Q1 to 2006Q4 without the non-actionable rows (440,235 rows, 163 positive, base rate 0.037%). These counts equal those of fold 4 in Part 5.1, so the demo reproduces the same split.
+A short MLlib demo on fold 4 of the purged validation (Google Colab, 2 vCPU, pyspark 4.0.1; input exported from the development rows only by `part5_export_mllib.py`, so no test row is involved). Pipeline: Imputer (median), VectorAssembler, StandardScaler (logistic model only), LogisticRegression or GBTClassifier with a balanced class weight; the clip bounds (0.5% and 99.5% quantiles, approxQuantile) are learned on the training rows only. Training: 1984Q1 to 1994Q4 (704,362 rows, 8,488 positive); validation: 1996Q1 to 2006Q4 without the non-actionable rows (440,235 rows, 163 positive, base rate 0.037%). These counts equal those of fold 4 in Part 5.1, so the demo reproduces the same split.
 
 | Model | Area under PR | Area under ROC | Fit time (s) | Fold-4 AP of the same family in scikit-learn |
 |---|---|---|---|---|
 | MLlib logistic regression (24 features) | 0.0400 | 0.8810 | 90 | 0.0640 (M1 logistic, C = 0.01) |
 | MLlib gradient-boosted trees (30 iterations, depth 4) | 0.0826 | 0.8963 | 116 | 0.0986 to 0.1056 (M2 gradient boosting, three settings) |
 
-- The ranking of the two families is the same as in scikit-learn (trees above logistic regression). MLlib is lower for each family: its GBT is much smaller (30 iterations, depth 4, against 150 to 300 iterations), the regularisation differs and `Imputer` and `approxQuantile` are approximate. The demo shows the tool, it is not a replacement for the scikit-learn models reported in Part 5.1 and 5.2, and it played no role in the model selection.
-- Spark's `areaUnderPR` uses trapezoidal interpolation, so it is close to but not identical with scikit-learn's Average Precision. The ROC areas are not comparable with the `pooled_AUC` column of Part 5.1, which pools the four folds (the note at the end of the results file refers to that column; only the AP of fold 4 is comparable).
+- The ranking of the two families is the same as in scikit-learn (trees above logistic regression). MLlib is lower for each family: its GBT is much smaller (30 iterations, depth 4, against 150 to 300 iterations), the regularisation differs and Imputer and approxQuantile are approximate. The demo shows the tool, it is not a replacement for the scikit-learn models reported in Part 5.1 and 5.2, and it played no role in the model selection.
+- Spark's areaUnderPR uses trapezoidal interpolation, so it is close to but not identical with scikit-learn's Average Precision. The ROC areas are not comparable with the pooled AUC column of Part 5.1, which pools the four folds (the note at the end of the results file refers to that column; only the AP of fold 4 is comparable).
 - With 163 positive rows from 49 banks the fold-4 figures are noisy; a difference of 0.02 in AP should not be over-interpreted.
 
 ### Part 5.4 development-period robustness analyses (`results/part5_dev_extras.txt`)
 
-Run after the test evaluation; it reads only development rows, refits the committed models and changes no committed choice. It stops unless the out-of-fold AP of B1 and of the selected model reproduces Table 12 to four decimals (it does, difference 0.0000).
+Run after the test evaluation; it reads only development rows, refits the committed models and changes no committed choice. It stops unless the out-of-fold AP of B1 and of the selected model reproduces the Part 5.1 model table to four decimals (it does, difference 0.0000).
 
 - **Implied kappa (asset-weighted).** A capacity of 5% of bank-quarters is cost-optimal at kappa 0.0106 (B1) and 0.0328 (selected); the main kappa of 0.02 lies between them (alarm rates 4.58% and 6.33%). Capacity 2%: 0.1663 and 0.0964; capacity 10%: 0.0007 and 0.0066. This replaces one assumption by another that is easier to state; it does not make the cost observable.
 - **Calibration.** B1 (balanced class weight) outputs scores: mean predicted rate 0.199, 0.152, 0.080, 0.053 against observed 0.0244, 0.0146, 0.0022, 0.0004; isotonic recalibration fitted on earlier folds lowers its Brier score from 0.0491 to 0.0130, from 0.0182 to 0.0024 and from 0.00678 to 0.00042 (folds 2 to 4). For the selected model (no class weight) the same recalibration does not help (Brier 0.01351 to 0.01408, 0.00263 to 0.00334, 0.00035 to 0.00036): the base rate falls from 2.4% to 0.04% between folds, so a mapping learned in one regime does not transfer.
@@ -404,9 +420,11 @@ Run after the test evaluation; it reads only development rows, refits the commit
 | pooled | 5652 | 7856 | 0.136 / 0.257 | 0.287 / 0.589 | 0.294 / 0.522 |
 
 ## Sources
+
 - `fdic_download_starter.py`: starter script provided by the course instructor (original, unchanged).
 - `download_fdic.py`: copy of the starter script, modified by me only in the field list `FIN_FIELDS` and the default output folder.
 - FDIC BankFind API and field dictionary: https://api.fdic.gov/banks/docs/ (failures, institutions and history endpoints).
 - Course materials: Lecture 3 "Financial Time Series" (07_L03_TimeSeries_ML) for the point-in-time rule and the available-timestamp idea; Lessons 12-14 (visualization) for the figure design.
 - Apache Spark / PySpark installation documentation (Java 17 or later is required): https://spark.apache.org/docs/latest/api/python/getting_started/install.html
-- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence, Polars, pandas and Spark benchmarks, Spark notebook and scaling experiment, feature pipeline, validation, test and MLlib scripts, development-period robustness analyses), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.
+- AI tools: Claude (Anthropic) and ChatGPT (OpenAI) were used for guidance on environment setup, debugging, code drafting (storage benchmark, data-quality report, exit classification, clean panel and label construction, zero-pattern evidence, Polars, pandas and Spark benchmarks, Spark notebook and scaling experiment, feature pipeline, validation, test and MLlib scripts, development-period robustness analyses, number check), choosing extra FDIC fields and structuring the README and report. I ran all code myself, checked the outputs against the generated result files, and take responsibility for the final content.
+
