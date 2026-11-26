@@ -222,7 +222,7 @@ Laptop (12 CPUs, 8.2 GB), best of 2 runs, memory guard 5 GB (`results/part3_scal
 | streaming | 4x | 6,725,724 | 6.33 | 3,446 | 512 |
 | streaming | 6x | 10,088,586 | 18.91 | 3,100 | 307 |
 
-- Spark in local mode is 15 to 18 times slower than Polars and grows linearly (33 to 36 s per million rows). One run per size cannot separate the shape of the Polars curve from noise.
+- Spark in local mode is 15 to 20 times slower than Polars and grows linearly (33 to 36 s per million rows). One run per size cannot separate the shape of the Polars curve from noise.
 - A panel 6 times larger (10.1 million rows) needed 3.1 GB at its peak (38% of the 8.2 GB RAM) and the 5 GB guard was never reached, so the single-machine limit is above 6 times the panel. Extrapolating the slope between 4x and 6x (about 340 MB per extra million rows) gives about 20 million rows (12x) at 80% of the RAM; this is a rough extrapolation, not a measurement.
 - The streaming engine did not lower the peak memory (3,100 against 3,130 MB at 6x) and was slower at 6x (18.9 against 14.0 s); which operations ran in the streaming engine was not checked.
 - Conclusion: for a 1.7 million row panel (about 200 MB of compressed Parquet, about 2 seconds on one machine) a cluster is not justified. It would be justified when the data no longer fits in one machine's memory (here beyond at least 6 times the panel, which fitted in 3.1 GB; for instance loan-level data), when a time limit cannot be met on one machine, when the work splits by independent keys without cross-sectional shuffles, or when the data already lives in distributed storage.
