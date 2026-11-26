@@ -116,7 +116,7 @@ Impossible or suspicious values:
 
 Open items:
 
-- Failures table has 4,117 rows and institutions has 27,835 rows. Reconciliation (Part 2.2): 4,006 institutions never appear in the panel and 235 panel banks are missing from the institutions table (27,835 âˆ’ 4,006 + 235 = 24,064).
+- Failures table has 4,117 rows and institutions has 27,835 rows. Reconciliation (Part 2.2): 4,006 institutions never appear in the panel and 235 panel banks are missing from the institutions table (27,835 - 4,006 + 235 = 24,064).
 - RBCRWAJ is unavailable in 1984-1989 (all rows) and in 35-42% of rows from 2020, so it cannot be the main capital measure of the model; this is handled in Part 4.
 
 ### Part 2.2 exit classification (`results/part2_exits.txt`)
